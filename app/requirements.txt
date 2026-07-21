@@ -1,0 +1,8 @@
+requests
+openpyxl
+python-telegram-bot[job-queue]
+fastapi
+uvicorn
+jinja2
+apscheduler
+httpx
