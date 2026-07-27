@@ -37,7 +37,8 @@ async def index(request: Request):
     user_id = db.get_user_id(CHAT_ID)
     if not user_id:
         user_id = db.create_user(CHAT_ID)
-    filters = db.get_active_filters(user_id)
+    # Используем get_all_filters, чтобы показывать все фильтры (и активные, и неактивные)
+    filters = db.get_all_filters(user_id)
     return render_template("index.html", request=request, filters=filters)
 
 @router.get("/filter/new")

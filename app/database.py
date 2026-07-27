@@ -117,6 +117,15 @@ def get_active_filters(user_id: int) -> List[dict]:
     conn.close()
     return [dict(row) for row in rows]
 
+def get_all_filters(user_id: int) -> List[dict]:
+    """Возвращает все фильтры пользователя (и активные, и неактивные)."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM filters WHERE user_id=?", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
 def update_filter_status(filter_id: int, active: bool):
     conn = get_db()
     c = conn.cursor()
@@ -125,7 +134,6 @@ def update_filter_status(filter_id: int, active: bool):
     conn.close()
 
 def get_filter_by_id(filter_id: int, user_id: int) -> Optional[dict]:
-    """Возвращает фильтр по ID и user_id (для проверки прав)."""
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT * FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
@@ -134,7 +142,6 @@ def get_filter_by_id(filter_id: int, user_id: int) -> Optional[dict]:
     return dict(row) if row else None
 
 def delete_filter(filter_id: int, user_id: int) -> bool:
-    """Удаляет фильтр, если он принадлежит пользователю."""
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
@@ -142,7 +149,6 @@ def delete_filter(filter_id: int, user_id: int) -> bool:
         conn.close()
         return False
     c.execute("DELETE FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
-    # Удаляем связанные записи в triggered_matches
     c.execute("DELETE FROM triggered_matches WHERE filter_id=?", (filter_id,))
     conn.commit()
     conn.close()
