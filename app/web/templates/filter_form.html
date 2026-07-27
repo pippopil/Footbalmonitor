@@ -10,6 +10,14 @@
 <div class="container mt-4">
     <h2>Создать фильтр</h2>
     <form method="post" action="/filter/save">
+        <!-- Название фильтра -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label class="form-label">Название фильтра (необязательно)</label>
+                <input type="text" class="form-control" name="name" placeholder="Например, Тотал больше 2.5" value="">
+            </div>
+        </div>
+
         <!-- Время матча -->
         <div class="row mb-3">
             <div class="col-md-6">

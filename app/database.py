@@ -20,6 +20,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS filters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
+        name TEXT,
         match_time_min INTEGER, match_time_max INTEGER,
         total_goals_min INTEGER, total_goals_max INTEGER,
         total_corners_min INTEGER, total_corners_max INTEGER,
@@ -66,6 +67,12 @@ def init_db():
         UNIQUE(match_id, filter_id)
     )''')
     conn.commit()
+    # Миграция: добавляем колонку name, если её нет
+    c.execute("PRAGMA table_info(filters)")
+    columns = [col[1] for col in c.fetchall()]
+    if 'name' not in columns:
+        c.execute("ALTER TABLE filters ADD COLUMN name TEXT")
+        conn.commit()
     conn.close()
 
 # --- Пользователи ---
@@ -91,6 +98,8 @@ def get_user_id(chat_id: int) -> Optional[int]:
 def save_filter(user_id: int, data: dict) -> int:
     conn = get_db()
     c = conn.cursor()
+    if 'name' not in data:
+        data['name'] = ''
     cols = ['user_id'] + list(data.keys())
     placeholders = ','.join(['?'] * len(cols))
     values = [user_id] + list(data.values())
@@ -114,6 +123,30 @@ def update_filter_status(filter_id: int, active: bool):
     c.execute("UPDATE filters SET is_active=? WHERE id=?", (1 if active else 0, filter_id))
     conn.commit()
     conn.close()
+
+def get_filter_by_id(filter_id: int, user_id: int) -> Optional[dict]:
+    """Возвращает фильтр по ID и user_id (для проверки прав)."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def delete_filter(filter_id: int, user_id: int) -> bool:
+    """Удаляет фильтр, если он принадлежит пользователю."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
+    if c.fetchone() is None:
+        conn.close()
+        return False
+    c.execute("DELETE FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
+    # Удаляем связанные записи в triggered_matches
+    c.execute("DELETE FROM triggered_matches WHERE filter_id=?", (filter_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 # --- Чёрный список ---
 def get_blacklisted_leagues(user_id: int) -> List[int]:

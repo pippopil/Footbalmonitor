@@ -22,9 +22,13 @@ class TelegramBot:
             logger.error(f"Send error: {e}")
 
     def run_polling(self):
-        self.application = Application.builder().token(self.token).build()
-        self.application.add_handler(CommandHandler("start", self.start_command))
-        self.application.run_polling()
+        try:
+            self.application = Application.builder().token(self.token).build()
+            self.application.add_handler(CommandHandler("start", self.start_command))
+            logger.info("Telegram бот запускается...")
+            self.application.run_polling()
+        except Exception as e:
+            logger.error(f"Ошибка запуска бота: {e}", exc_info=True)
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id

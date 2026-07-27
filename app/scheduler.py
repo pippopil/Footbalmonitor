@@ -61,7 +61,6 @@ class MatchScheduler:
                     continue
                 odds = self.sstats.get_match_odds(match_id)
 
-                # Получение исторических данных (заглушки, можно адаптировать)
                 team1_id = match.get('home', {}).get('id')
                 team2_id = match.get('away', {}).get('id')
                 h2h_data = self.sstats.get_head_to_head(team1_id, team2_id, limit=5) if team1_id and team2_id else None
@@ -75,7 +74,8 @@ class MatchScheduler:
                     if db.is_match_triggered(match_id, filter_id):
                         continue
 
-                    msg = self._format_message(match, stats, odds, h2h_data, home_recent, away_recent)
+                    filter_name = f.get('name', f'Фильтр #{filter_id}')
+                    msg = self._format_message(match, stats, odds, h2h_data, home_recent, away_recent, filter_name, f)
                     await self.bot.send_message(self.chat_id, msg)
                     self.excel.append_match(match, stats, odds, filter_id)
                     db.add_triggered_match(match_id, filter_id, match)
@@ -83,7 +83,7 @@ class MatchScheduler:
         except Exception as e:
             logger.error(f"Scheduler error: {e}", exc_info=True)
 
-    def _format_message(self, match, stats, odds, h2h_data=None, home_recent=None, away_recent=None):
+    def _format_message(self, match, stats, odds, h2h_data, home_recent, away_recent, filter_name, filter_dict):
         home_name = match.get('home', {}).get('name', 'Home')
         away_name = match.get('away', {}).get('name', 'Away')
         minute = match.get('minute', 0)
@@ -102,15 +102,25 @@ class MatchScheduler:
         p2 = odds.get('p2', 0)
         over = odds.get('total_over_2_5', 0)
 
-        msg = (f"⚽ МАТЧ ПОДОШЕЛ ПОД ФИЛЬТР!\n\n"
-               f"{home_name} vs {away_name}\n"
-               f"⏱ {minute}'\n"
-               f"Счет: {home_goals}-{away_goals}\n"
-               f"Угловые: {home_corners} - {away_corners}\n"
-               f"Удары всего: {home_shots} - {away_shots}\n"
-               f"Удары в створ: {home_sot} - {away_sot}\n"
-               f"ЖК: {home_yellow} - {away_yellow}\n"
-               f"Коэф: П1={p1}, Ничья={draw}, П2={p2}, Тотал 2.5 Овер={over}\n")
+        # Формируем сообщение с именем фильтра и его условиями
+        msg = f"⚽ СИГНАЛ ОТ ФИЛЬТРА: {filter_name}\n\n"
+        msg += f"{home_name} vs {away_name}\n"
+        msg += f"⏱ {minute}'\n"
+        msg += f"Счет: {home_goals}-{away_goals}\n"
+        msg += f"Угловые: {home_corners} - {away_corners}\n"
+        msg += f"Удары всего: {home_shots} - {away_shots}\n"
+        msg += f"Удары в створ: {home_sot} - {away_sot}\n"
+        msg += f"ЖК: {home_yellow} - {away_yellow}\n"
+        msg += f"Коэф: П1={p1}, Ничья={draw}, П2={p2}, Тотал 2.5 Овер={over}\n"
+
+        # Добавим краткое описание условий фильтра (для наглядности)
+        msg += f"\nУсловия фильтра:\n"
+        if filter_dict.get('total_goals_min') != 0 or filter_dict.get('total_goals_max') != 10:
+            msg += f"- Голы: {filter_dict['total_goals_min']} – {filter_dict['total_goals_max']}\n"
+        if filter_dict.get('match_time_min') != 0 or filter_dict.get('match_time_max') != 90:
+            msg += f"- Время матча: {filter_dict['match_time_min']} – {filter_dict['match_time_max']} мин\n"
+        # Можно добавить и другие параметры по желанию
+
         if h2h_data:
             msg += f"\nСр. голов в личных встречах: {h2h_data.get('avg_goals', 0):.2f}"
         if home_recent:

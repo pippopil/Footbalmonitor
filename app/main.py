@@ -11,48 +11,44 @@ from app import database as db
 import logging
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 app.include_router(web_router)
 
 def main():
-    # Инициализация БД
     db.init_db()
 
-    # Клиент SStats
     sstats = SStatsClient()
-
-    # Telegram бот
     bot = TelegramBot(token=TELEGRAM_BOT_TOKEN, use_botgate=TELEGRAM_USE_BOTGATE)
-
-    # Excel
     excel = ExcelExporter()
 
-    # Планировщик
     scheduler = MatchScheduler(sstats, bot, excel, DEFAULT_CHAT_ID)
     scheduler.start()
 
-    # Запуск веб-сервера в отдельном потоке
     def run_web():
         uvicorn.run(app, host="0.0.0.0", port=8000)
 
     web_thread = threading.Thread(target=run_web, daemon=True)
     web_thread.start()
+    logger.info("Веб-сервер запущен на http://0.0.0.0:8000")
 
-    # Запуск бота (polling) в отдельном потоке
     def run_bot():
-        bot.run_polling()
+        try:
+            bot.run_polling()
+        except Exception as e:
+            logger.error(f"Ошибка в потоке бота: {e}", exc_info=True)
 
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
+    logger.info("Поток бота запущен")
 
-    # Держим основной поток живым
     try:
         while True:
             import time
             time.sleep(1)
     except KeyboardInterrupt:
-        pass
+        logger.info("Завершение работы...")
 
 if __name__ == "__main__":
     main()

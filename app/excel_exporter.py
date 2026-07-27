@@ -36,11 +36,15 @@ class ExcelExporter:
         home_yellow = stats.get('yellow_cards', {}).get('home', 0)
         away_yellow = stats.get('yellow_cards', {}).get('away', 0)
 
+        # Исправлено: используем homeTeam/awayTeam
+        home_name = match.get('homeTeam', {}).get('name', '')
+        away_name = match.get('awayTeam', {}).get('name', '')
+
         row = [
             datetime.now().isoformat(),
-            f"{match.get('home', {}).get('name', '')} - {match.get('away', {}).get('name', '')}",
+            f"{home_name} - {away_name}",
             f"{home_goals}-{away_goals}",
-            match.get('minute', 0),
+            match.get('elapsed', match.get('minute', 0)),
             home_goals + away_goals,
             home_corners + away_corners,
             home_shots + away_shots,

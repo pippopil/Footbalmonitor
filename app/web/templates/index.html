@@ -17,6 +17,7 @@
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Название</th>
                 <th>Время</th>
                 <th>Общ. голы</th>
                 <th>Общ. угловые</th>
@@ -24,19 +25,33 @@
                 <th>Гости голы</th>
                 <th>Коэф. П1</th>
                 <th>Активен</th>
+                <th>Действия</th>
             </tr>
         </thead>
         <tbody>
             {% for f in filters %}
             <tr>
                 <td>{{ f.id }}</td>
+                <td>{{ f.name or '—' }}</td>
                 <td>{{ f.match_time_min }}-{{ f.match_time_max }}</td>
                 <td>{{ f.total_goals_min }}-{{ f.total_goals_max }}</td>
                 <td>{{ f.total_corners_min }}-{{ f.total_corners_max }}</td>
                 <td>{{ f.home_goals_min }}-{{ f.home_goals_max }}</td>
                 <td>{{ f.away_goals_min }}-{{ f.away_goals_max }}</td>
                 <td>{{ f.odds_p1_min }}-{{ f.odds_p1_max }}</td>
-                <td>{{ "Да" if f.is_active else "Нет" }}</td>
+                <td>{{ "✅" if f.is_active else "❌" }}</td>
+                <td>
+                    <!-- Форма для переключения активности -->
+                    <form method="post" action="/filter/toggle/{{ f.id }}" style="display:inline;">
+                        <button type="submit" class="btn btn-sm {% if f.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                            {% if f.is_active %}Выкл{% else %}Вкл{% endif %}
+                        </button>
+                    </form>
+                    <!-- Форма для удаления -->
+                    <form method="post" action="/filter/delete/{{ f.id }}" style="display:inline;" onsubmit="return confirm('Удалить фильтр #{{ f.id }}?')">
+                        <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
