@@ -2,9 +2,9 @@ import asyncio
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-import database as db
-from filter_engine import check_filters
-from config import CHECK_INTERVAL, DEFAULT_CHAT_ID
+from app import database as db
+from app.filter_engine import check_filters
+from app.config import CHECK_INTERVAL, DEFAULT_CHAT_ID
 
 logger = logging.getLogger(__name__)
 

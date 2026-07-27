@@ -2,7 +2,7 @@ import openpyxl
 from openpyxl import load_workbook
 from datetime import datetime
 import os
-from config import EXCEL_PATH
+from app.config import EXCEL_PATH
 
 class ExcelExporter:
     def __init__(self, file_path: str = EXCEL_PATH):

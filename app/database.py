@@ -2,7 +2,7 @@ import sqlite3
 import json
 from datetime import datetime
 from typing import List, Dict, Optional
-from config import DATABASE_PATH
+from app.config import DATABASE_PATH
 
 def get_db():
     conn = sqlite3.connect(DATABASE_PATH)

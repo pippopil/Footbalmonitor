@@ -1,7 +1,7 @@
 import os
 
 # --- SStats.net ---
-SSTATS_API_KEY = os.getenv("SSTATS_API_KEY", "ваш_ключ_от_sstats")
+SSTATS_API_KEY = os.getenv("SSTATS_API_KEY", "4dm5q8an48lgscfe")
 SSTATS_BASE_URL = "https://api.sstats.net"
 
 # --- Telegram ---

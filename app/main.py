@@ -1,13 +1,13 @@
 import threading
 import uvicorn
-from config import *
-from sstats_client import SStatsClient
-from telegram_bot import TelegramBot
-from excel_exporter import ExcelExporter
-from scheduler import MatchScheduler
-from web.routes import router as web_router
+from app.config import *
+from app.sstats_client import SStatsClient
+from app.telegram_bot import TelegramBot
+from app.excel_exporter import ExcelExporter
+from app.scheduler import MatchScheduler
+from app.web.routes import router as web_router
 from fastapi import FastAPI
-import database as db
+from app import database as db
 import logging
 
 logging.basicConfig(level=logging.INFO)

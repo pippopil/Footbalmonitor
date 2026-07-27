@@ -1,8 +1,8 @@
 import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-import database as db
-from config import TELEGRAM_BOT_TOKEN, TELEGRAM_USE_BOTGATE
+from app import database as db
+from app.config import TELEGRAM_BOT_TOKEN, TELEGRAM_USE_BOTGATE
 
 logger = logging.getLogger(__name__)
 

@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Request, Form, RedirectResponse
+from fastapi import APIRouter, Request, Form
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-import database as db
-from config import DEFAULT_CHAT_ID
+from app import database as db
+from app.config import DEFAULT_CHAT_ID
+from app.sstats_client import SStatsClient
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
 
-# Для демонстрации используем фиксированный chat_id (в будущем – сессии)
 CHAT_ID = DEFAULT_CHAT_ID
 
 @router.get("/")
@@ -91,8 +92,6 @@ async def leagues_page(request: Request):
     user_id = db.get_user_id(CHAT_ID)
     if not user_id:
         user_id = db.create_user(CHAT_ID)
-    # Здесь нужно получить список всех лиг из SStats (импортируем клиент)
-    from app.sstats_client import SStatsClient
     client = SStatsClient()
     all_leagues = client.get_leagues()
     blacklisted = db.get_blacklisted_leagues_full(user_id)
