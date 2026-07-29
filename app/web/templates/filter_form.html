@@ -3,33 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Новый фильтр</title>
+    <title>{% if filter %}Редактировать фильтр{% else %}Новый фильтр{% endif %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .tab-content {
-            padding-top: 20px;
-        }
-        .form-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        .form-section h5 {
-            margin-bottom: 15px;
-            color: #0d6efd;
-        }
-        .form-label {
-            font-weight: 500;
-        }
+        .tab-content { padding-top: 20px; }
+        .form-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .form-section h5 { margin-bottom: 15px; color: #0d6efd; }
+        .form-label { font-weight: 500; }
     </style>
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Создать фильтр</h2>
-    <form method="post" action="/filter/save">
+    <h2>{% if filter %}Редактировать фильтр #{{ filter.id }}{% else %}Создать фильтр{% endif %}</h2>
+    <form method="post" action="{% if filter %}/filter/update/{{ filter.id }}{% else %}/filter/save{% endif %}">
         
-        <!-- Навигация по вкладкам -->
+        <!-- Название фильтра -->
+        <div class="form-section">
+            <h5>📝 Название фильтра</h5>
+            <div class="row">
+                <div class="col-md-12">
+                    <input type="text" class="form-control" name="name" placeholder="Введите название" value="{{ filter.name if filter else '' }}" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигация по вкладкам (без изменений) -->
         <ul class="nav nav-tabs" id="filterTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">Общие</button>
@@ -45,9 +43,7 @@
             </li>
         </ul>
 
-        <!-- Содержимое вкладок -->
         <div class="tab-content" id="filterTabsContent">
-
             <!-- Вкладка 1: Общие -->
             <div class="tab-pane fade show active" id="general" role="tabpanel">
                 <div class="form-section">
@@ -55,31 +51,31 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="form-label">От (мин)</label>
-                            <input type="number" class="form-control" name="match_time_min" value="0" min="0" max="120">
+                            <input type="number" class="form-control" name="match_time_min" value="{{ filter.match_time_min if filter else 0 }}" min="0" max="120">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">До (мин)</label>
-                            <input type="number" class="form-control" name="match_time_max" value="90" min="0" max="120">
+                            <input type="number" class="form-control" name="match_time_max" value="{{ filter.match_time_max if filter else 90 }}" min="0" max="120">
                         </div>
                     </div>
                 </div>
                 <div class="form-section">
                     <h5>⚽ Общая статистика матча (суммарно)</h5>
                     <div class="row">
-                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="total_goals_min" value="0"></div>
-                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="total_goals_max" value="10"></div>
-                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="total_corners_min" value="0"></div>
-                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="total_corners_max" value="20"></div>
+                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="total_goals_min" value="{{ filter.total_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="total_goals_max" value="{{ filter.total_goals_max if filter else 10 }}"></div>
+                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="total_corners_min" value="{{ filter.total_corners_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="total_corners_max" value="{{ filter.total_corners_max if filter else 20 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="total_shots_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="total_shots_max" value="30"></div>
-                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="total_sot_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="total_sot_max" value="15"></div>
+                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="total_shots_min" value="{{ filter.total_shots_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="total_shots_max" value="{{ filter.total_shots_max if filter else 30 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="total_sot_min" value="{{ filter.total_sot_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="total_sot_max" value="{{ filter.total_sot_max if filter else 15 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-6"><label>Жёлтые карточки (мин)</label><input type="number" class="form-control" name="total_yellow_min" value="0"></div>
-                        <div class="col-md-6"><label>Жёлтые карточки (макс)</label><input type="number" class="form-control" name="total_yellow_max" value="10"></div>
+                        <div class="col-md-6"><label>Жёлтые карточки (мин)</label><input type="number" class="form-control" name="total_yellow_min" value="{{ filter.total_yellow_min if filter else 0 }}"></div>
+                        <div class="col-md-6"><label>Жёлтые карточки (макс)</label><input type="number" class="form-control" name="total_yellow_max" value="{{ filter.total_yellow_max if filter else 10 }}"></div>
                     </div>
                 </div>
             </div>
@@ -89,40 +85,40 @@
                 <div class="form-section">
                     <h5>🏠 Хозяева (домашняя команда)</h5>
                     <div class="row">
-                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="home_goals_min" value="0"></div>
-                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="home_goals_max" value="10"></div>
-                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="home_corners_min" value="0"></div>
-                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="home_corners_max" value="20"></div>
+                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="home_goals_min" value="{{ filter.home_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="home_goals_max" value="{{ filter.home_goals_max if filter else 10 }}"></div>
+                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="home_corners_min" value="{{ filter.home_corners_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="home_corners_max" value="{{ filter.home_corners_max if filter else 20 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="home_shots_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="home_shots_max" value="30"></div>
-                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="home_sot_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="home_sot_max" value="15"></div>
+                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="home_shots_min" value="{{ filter.home_shots_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="home_shots_max" value="{{ filter.home_shots_max if filter else 30 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="home_sot_min" value="{{ filter.home_sot_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="home_sot_max" value="{{ filter.home_sot_max if filter else 15 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-6"><label>Жёлтые (мин)</label><input type="number" class="form-control" name="home_yellow_min" value="0"></div>
-                        <div class="col-md-6"><label>Жёлтые (макс)</label><input type="number" class="form-control" name="home_yellow_max" value="10"></div>
+                        <div class="col-md-6"><label>Жёлтые (мин)</label><input type="number" class="form-control" name="home_yellow_min" value="{{ filter.home_yellow_min if filter else 0 }}"></div>
+                        <div class="col-md-6"><label>Жёлтые (макс)</label><input type="number" class="form-control" name="home_yellow_max" value="{{ filter.home_yellow_max if filter else 10 }}"></div>
                     </div>
                 </div>
 
                 <div class="form-section">
                     <h5>✈️ Гости (выездная команда)</h5>
                     <div class="row">
-                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="away_goals_min" value="0"></div>
-                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="away_goals_max" value="10"></div>
-                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="away_corners_min" value="0"></div>
-                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="away_corners_max" value="20"></div>
+                        <div class="col-md-3"><label>Голы (мин)</label><input type="number" class="form-control" name="away_goals_min" value="{{ filter.away_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Голы (макс)</label><input type="number" class="form-control" name="away_goals_max" value="{{ filter.away_goals_max if filter else 10 }}"></div>
+                        <div class="col-md-3"><label>Угловые (мин)</label><input type="number" class="form-control" name="away_corners_min" value="{{ filter.away_corners_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Угловые (макс)</label><input type="number" class="form-control" name="away_corners_max" value="{{ filter.away_corners_max if filter else 20 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="away_shots_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="away_shots_max" value="30"></div>
-                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="away_sot_min" value="0"></div>
-                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="away_sot_max" value="15"></div>
+                        <div class="col-md-3"><label>Удары (мин)</label><input type="number" class="form-control" name="away_shots_min" value="{{ filter.away_shots_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары (макс)</label><input type="number" class="form-control" name="away_shots_max" value="{{ filter.away_shots_max if filter else 30 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (мин)</label><input type="number" class="form-control" name="away_sot_min" value="{{ filter.away_sot_min if filter else 0 }}"></div>
+                        <div class="col-md-3"><label>Удары в створ (макс)</label><input type="number" class="form-control" name="away_sot_max" value="{{ filter.away_sot_max if filter else 15 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-6"><label>Жёлтые (мин)</label><input type="number" class="form-control" name="away_yellow_min" value="0"></div>
-                        <div class="col-md-6"><label>Жёлтые (макс)</label><input type="number" class="form-control" name="away_yellow_max" value="10"></div>
+                        <div class="col-md-6"><label>Жёлтые (мин)</label><input type="number" class="form-control" name="away_yellow_min" value="{{ filter.away_yellow_min if filter else 0 }}"></div>
+                        <div class="col-md-6"><label>Жёлтые (макс)</label><input type="number" class="form-control" name="away_yellow_max" value="{{ filter.away_yellow_max if filter else 10 }}"></div>
                     </div>
                 </div>
 
@@ -130,18 +126,18 @@
                     <h5>📊 Разница статистики (хозяева - гости)</h5>
                     <p class="text-muted small">Положительное = хозяева больше</p>
                     <div class="row">
-                        <div class="col-md-2"><label>Голы (мин)</label><input type="number" class="form-control" name="diff_goals_min" value="-10"></div>
-                        <div class="col-md-2"><label>Голы (макс)</label><input type="number" class="form-control" name="diff_goals_max" value="10"></div>
-                        <div class="col-md-2"><label>Угловые (мин)</label><input type="number" class="form-control" name="diff_corners_min" value="-20"></div>
-                        <div class="col-md-2"><label>Угловые (макс)</label><input type="number" class="form-control" name="diff_corners_max" value="20"></div>
-                        <div class="col-md-2"><label>Удары (мин)</label><input type="number" class="form-control" name="diff_shots_min" value="-30"></div>
-                        <div class="col-md-2"><label>Удары (макс)</label><input type="number" class="form-control" name="diff_shots_max" value="30"></div>
+                        <div class="col-md-2"><label>Голы (мин)</label><input type="number" class="form-control" name="diff_goals_min" value="{{ filter.diff_goals_min if filter else -10 }}"></div>
+                        <div class="col-md-2"><label>Голы (макс)</label><input type="number" class="form-control" name="diff_goals_max" value="{{ filter.diff_goals_max if filter else 10 }}"></div>
+                        <div class="col-md-2"><label>Угловые (мин)</label><input type="number" class="form-control" name="diff_corners_min" value="{{ filter.diff_corners_min if filter else -20 }}"></div>
+                        <div class="col-md-2"><label>Угловые (макс)</label><input type="number" class="form-control" name="diff_corners_max" value="{{ filter.diff_corners_max if filter else 20 }}"></div>
+                        <div class="col-md-2"><label>Удары (мин)</label><input type="number" class="form-control" name="diff_shots_min" value="{{ filter.diff_shots_min if filter else -30 }}"></div>
+                        <div class="col-md-2"><label>Удары (макс)</label><input type="number" class="form-control" name="diff_shots_max" value="{{ filter.diff_shots_max if filter else 30 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-2"><label>Уд. в створ (мин)</label><input type="number" class="form-control" name="diff_sot_min" value="-15"></div>
-                        <div class="col-md-2"><label>Уд. в створ (макс)</label><input type="number" class="form-control" name="diff_sot_max" value="15"></div>
-                        <div class="col-md-2"><label>ЖК (мин)</label><input type="number" class="form-control" name="diff_yellow_min" value="-10"></div>
-                        <div class="col-md-2"><label>ЖК (макс)</label><input type="number" class="form-control" name="diff_yellow_max" value="10"></div>
+                        <div class="col-md-2"><label>Уд. в створ (мин)</label><input type="number" class="form-control" name="diff_sot_min" value="{{ filter.diff_sot_min if filter else -15 }}"></div>
+                        <div class="col-md-2"><label>Уд. в створ (макс)</label><input type="number" class="form-control" name="diff_sot_max" value="{{ filter.diff_sot_max if filter else 15 }}"></div>
+                        <div class="col-md-2"><label>ЖК (мин)</label><input type="number" class="form-control" name="diff_yellow_min" value="{{ filter.diff_yellow_min if filter else -10 }}"></div>
+                        <div class="col-md-2"><label>ЖК (макс)</label><input type="number" class="form-control" name="diff_yellow_max" value="{{ filter.diff_yellow_max if filter else 10 }}"></div>
                     </div>
                 </div>
             </div>
@@ -151,16 +147,16 @@
                 <div class="form-section">
                     <h5>📈 Букмекерские коэффициенты</h5>
                     <div class="row">
-                        <div class="col-md-3"><label>П1 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_p1_min" value="1.0"></div>
-                        <div class="col-md-3"><label>П1 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_p1_max" value="10.0"></div>
-                        <div class="col-md-3"><label>Ничья (мин)</label><input type="number" step="0.01" class="form-control" name="odds_draw_min" value="1.0"></div>
-                        <div class="col-md-3"><label>Ничья (макс)</label><input type="number" step="0.01" class="form-control" name="odds_draw_max" value="10.0"></div>
+                        <div class="col-md-3"><label>П1 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_p1_min" value="{{ filter.odds_p1_min if filter else 1.0 }}"></div>
+                        <div class="col-md-3"><label>П1 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_p1_max" value="{{ filter.odds_p1_max if filter else 10.0 }}"></div>
+                        <div class="col-md-3"><label>Ничья (мин)</label><input type="number" step="0.01" class="form-control" name="odds_draw_min" value="{{ filter.odds_draw_min if filter else 1.0 }}"></div>
+                        <div class="col-md-3"><label>Ничья (макс)</label><input type="number" step="0.01" class="form-control" name="odds_draw_max" value="{{ filter.odds_draw_max if filter else 10.0 }}"></div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-3"><label>П2 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_p2_min" value="1.0"></div>
-                        <div class="col-md-3"><label>П2 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_p2_max" value="10.0"></div>
-                        <div class="col-md-3"><label>Тотал 2.5 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_total_over_2_5_min" value="1.0"></div>
-                        <div class="col-md-3"><label>Тотал 2.5 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_total_over_2_5_max" value="5.0"></div>
+                        <div class="col-md-3"><label>П2 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_p2_min" value="{{ filter.odds_p2_min if filter else 1.0 }}"></div>
+                        <div class="col-md-3"><label>П2 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_p2_max" value="{{ filter.odds_p2_max if filter else 10.0 }}"></div>
+                        <div class="col-md-3"><label>Тотал 2.5 (мин)</label><input type="number" step="0.01" class="form-control" name="odds_total_over_2_5_min" value="{{ filter.odds_total_over_2_5_min if filter else 1.0 }}"></div>
+                        <div class="col-md-3"><label>Тотал 2.5 (макс)</label><input type="number" step="0.01" class="form-control" name="odds_total_over_2_5_max" value="{{ filter.odds_total_over_2_5_max if filter else 5.0 }}"></div>
                     </div>
                 </div>
             </div>
@@ -170,34 +166,34 @@
                 <div class="form-section">
                     <h5>🔄 Личные встречи (H2H)</h5>
                     <div class="row">
-                        <div class="col-md-4"><label>Количество матчей для анализа</label><input type="number" class="form-control" name="h2h_matches_count" value="5"></div>
-                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="h2h_avg_goals_min" value="0"></div>
-                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="h2h_avg_goals_max" value="10"></div>
+                        <div class="col-md-4"><label>Количество матчей</label><input type="number" class="form-control" name="h2h_matches_count" value="{{ filter.h2h_matches_count if filter else 5 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="h2h_avg_goals_min" value="{{ filter.h2h_avg_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="h2h_avg_goals_max" value="{{ filter.h2h_avg_goals_max if filter else 10 }}"></div>
                     </div>
                 </div>
 
                 <div class="form-section">
                     <h5>🏠 Последние матчи хозяев (дома)</h5>
                     <div class="row">
-                        <div class="col-md-4"><label>Количество матчей</label><input type="number" class="form-control" name="home_recent_count" value="5"></div>
-                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="home_recent_goals_min" value="0"></div>
-                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="home_recent_goals_max" value="10"></div>
+                        <div class="col-md-4"><label>Количество матчей</label><input type="number" class="form-control" name="home_recent_count" value="{{ filter.home_recent_count if filter else 5 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="home_recent_goals_min" value="{{ filter.home_recent_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="home_recent_goals_max" value="{{ filter.home_recent_goals_max if filter else 10 }}"></div>
                     </div>
                 </div>
 
                 <div class="form-section">
                     <h5>✈️ Последние матчи гостей (в гостях)</h5>
                     <div class="row">
-                        <div class="col-md-4"><label>Количество матчей</label><input type="number" class="form-control" name="away_recent_count" value="5"></div>
-                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="away_recent_goals_min" value="0"></div>
-                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="away_recent_goals_max" value="10"></div>
+                        <div class="col-md-4"><label>Количество матчей</label><input type="number" class="form-control" name="away_recent_count" value="{{ filter.away_recent_count if filter else 5 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (мин)</label><input type="number" class="form-control" name="away_recent_goals_min" value="{{ filter.away_recent_goals_min if filter else 0 }}"></div>
+                        <div class="col-md-4"><label>Среднее голов (макс)</label><input type="number" class="form-control" name="away_recent_goals_max" value="{{ filter.away_recent_goals_max if filter else 10 }}"></div>
                     </div>
                 </div>
             </div>
 
         </div> <!-- /tab-content -->
 
-        <button type="submit" class="btn btn-primary mt-4">💾 Сохранить фильтр</button>
+        <button type="submit" class="btn btn-primary mt-4">💾 {% if filter %}Обновить фильтр{% else %}Сохранить фильтр{% endif %}</button>
         <a href="/" class="btn btn-secondary mt-4 ms-2">❌ Отмена</a>
     </form>
 </div>

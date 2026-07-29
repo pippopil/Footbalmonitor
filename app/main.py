@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from app import database as db
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)  # было INFO
 logger = logging.getLogger(__name__)
 
 app = FastAPI()

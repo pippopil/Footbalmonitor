@@ -18,4 +18,4 @@ DATABASE_PATH = os.path.join(BASE_DIR, "data", "app.db")
 EXCEL_PATH = os.path.join(BASE_DIR, "data", "signals.xlsx")
 
 # Интервал
-CHECK_INTERVAL = 30
+CHECK_INTERVAL = 120
