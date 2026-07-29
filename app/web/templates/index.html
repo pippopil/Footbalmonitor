@@ -1,52 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мои фильтры</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table-actions .btn {
+            margin-right: 4px;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .badge-status {
+            font-size: 0.8rem;
+        }
+        .table-sm td, .table-sm th {
+            vertical-align: middle;
+        }
+    </style>
 </head>
 <body>
 <div class="container mt-4">
     <h2>Мои фильтры</h2>
     <div class="mb-3">
-        <a href="/filter/new" class="btn btn-success">Создать новый фильтр</a>
-        <a href="/leagues" class="btn btn-secondary">Управление чёрным списком лиг</a>
+        <a href="/filter/new" class="btn btn-success">➕ Создать новый фильтр</a>
+        <a href="/leagues" class="btn btn-secondary">⚙️ Управление чёрным списком</a>
     </div>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Время</th>
-                <th>Общ. голы</th>
-                <th>Общ. угловые</th>
-                <th>Хозяева голы</th>
-                <th>Гости голы</th>
-                <th>Разница голов</th>
-                <th>Разница угловых</th>
-                <th>Разница ударов</th>
-                <th>Коэф. П1</th>
-                <th>Активен</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for f in filters %}
-            <tr>
-                <td>{{ f.id }}</td>
-                <td>{{ f.match_time_min }}-{{ f.match_time_max }}</td>
-                <td>{{ f.total_goals_min }}-{{ f.total_goals_max }}</td>
-                <td>{{ f.total_corners_min }}-{{ f.total_corners_max }}</td>
-                <td>{{ f.home_goals_min }}-{{ f.home_goals_max }}</td>
-                <td>{{ f.away_goals_min }}-{{ f.away_goals_max }}</td>
-                <td>{{ f.diff_goals_min }}-{{ f.diff_goals_max }}</td>
-                <td>{{ f.diff_corners_min }}-{{ f.diff_corners_max }}</td>
-                <td>{{ f.diff_shots_min }}-{{ f.diff_shots_max }}</td>
-                <td>{{ f.odds_p1_min }}-{{ f.odds_p1_max }}</td>
-                <td>{{ "Да" if f.is_active else "Нет" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-sm table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Время</th>
+                    <th>Голы (общ.)</th>
+                    <th>Угловые (общ.)</th>
+                    <th>Голы (хоз)</th>
+                    <th>Голы (гости)</th>
+                    <th>Разница голов</th>
+                    <th>Коэф. П1</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in filters %}
+                <tr>
+                    <td>{{ f.id }}</td>
+                    <td>{{ f.match_time_min }}-{{ f.match_time_max }}'</td>
+                    <td>{{ f.total_goals_min }}-{{ f.total_goals_max }}</td>
+                    <td>{{ f.total_corners_min }}-{{ f.total_corners_max }}</td>
+                    <td>{{ f.home_goals_min }}-{{ f.home_goals_max }}</td>
+                    <td>{{ f.away_goals_min }}-{{ f.away_goals_max }}</td>
+                    <td>{{ f.diff_goals_min }}-{{ f.diff_goals_max }}</td>
+                    <td>{{ f.odds_p1_min }}-{{ f.odds_p1_max }}</td>
+                    <td>
+                        <span class="badge {% if f.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ "Активен" if f.is_active else "Отключён" }}
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        <form method="post" action="/filter/toggle/{{ f.id }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm {% if f.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                                {% if f.is_active %}⏸ Выключить{% else %}▶ Включить{% endif %}
+                            </button>
+                        </form>
+                        <form method="post" action="/filter/delete/{{ f.id }}" style="display:inline;" 
+                              onsubmit="return confirm('Удалить фильтр #{{ f.id }}? Это действие необратимо.');">
+                            <button type="submit" class="btn btn-sm btn-danger">🗑 Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not filters %}
+    <div class="alert alert-info mt-3">У вас пока нет фильтров. Создайте первый!</div>
+    {% endif %}
 </div>
 </body>
 </html>

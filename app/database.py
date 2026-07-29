@@ -136,6 +136,15 @@ def get_active_filters(user_id: int) -> List[dict]:
     conn.close()
     return [dict(row) for row in rows]
 
+def get_all_filters(user_id: int) -> List[dict]:
+    """Возвращает все фильтры пользователя (включая неактивные)."""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM filters WHERE user_id=? ORDER BY id DESC", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
 def update_filter_status(filter_id: int, active: bool):
     conn = get_db()
     c = conn.cursor()

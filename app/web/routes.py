@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Path
 from fastapi.responses import RedirectResponse, HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import database as db
@@ -8,21 +8,18 @@ from app.sstats_client import SStatsClient
 
 router = APIRouter()
 
-# Путь к шаблонам
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(CURRENT_DIR, "templates")
 
-# Создаём окружение Jinja2 без кэша (надёжно)
 env = Environment(
     loader=FileSystemLoader(TEMPLATES_DIR),
     autoescape=select_autoescape(['html', 'xml']),
-    cache_size=0,          # полностью отключаем кэш
-    auto_reload=True,      # перезагружать при изменениях
+    cache_size=0,
+    auto_reload=True,
 )
 
 CHAT_ID = DEFAULT_CHAT_ID
 
-# Вспомогательная функция для рендеринга шаблонов
 def render_template(template_name: str, context: dict):
     template = env.get_template(template_name)
     return HTMLResponse(content=template.render(**context))
@@ -33,7 +30,9 @@ async def index(request: Request):
     if not user_id:
         user_id = db.create_user(CHAT_ID)
     filters = db.get_active_filters(user_id)
-    return render_template("index.html", {"request": request, "filters": filters})
+    # Также получаем все фильтры (включая неактивные) для отображения
+    all_filters = db.get_all_filters(user_id)  # новую функцию добавим в database.py
+    return render_template("index.html", {"request": request, "filters": all_filters})
 
 @router.get("/filter/new")
 async def new_filter(request: Request):
@@ -112,6 +111,28 @@ async def save_filter(
         'diff_yellow_min': diff_yellow_min, 'diff_yellow_max': diff_yellow_max,
     }
     db.save_filter(user_id, data)
+    return RedirectResponse("/", status_code=303)
+
+@router.post("/filter/toggle/{filter_id}")
+async def toggle_filter(filter_id: int = Path(...)):
+    # Получаем текущий статус фильтра
+    conn = db.get_db()
+    c = conn.cursor()
+    c.execute("SELECT is_active FROM filters WHERE id=?", (filter_id,))
+    row = c.fetchone()
+    if row:
+        new_status = 0 if row[0] == 1 else 1
+        db.update_filter_status(filter_id, new_status)
+    conn.close()
+    return RedirectResponse("/", status_code=303)
+
+@router.post("/filter/delete/{filter_id}")
+async def delete_filter(filter_id: int = Path(...)):
+    conn = db.get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM filters WHERE id=?", (filter_id,))
+    conn.commit()
+    conn.close()
     return RedirectResponse("/", status_code=303)
 
 @router.get("/leagues")
