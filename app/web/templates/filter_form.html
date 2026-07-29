@@ -10,14 +10,6 @@
 <div class="container mt-4">
     <h2>Создать фильтр</h2>
     <form method="post" action="/filter/save">
-        <!-- Название фильтра -->
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <label class="form-label">Название фильтра (необязательно)</label>
-                <input type="text" class="form-control" name="name" placeholder="Например, Тотал больше 2.5" value="">
-            </div>
-        </div>
-
         <!-- Время матча -->
         <div class="row mb-3">
             <div class="col-md-6">
@@ -85,6 +77,24 @@
         <div class="row mt-2">
             <div class="col-md-6"><label>Жёлтые (мин)</label><input type="number" class="form-control" name="away_yellow_min" value="0"></div>
             <div class="col-md-6"><label>Жёлтые (макс)</label><input type="number" class="form-control" name="away_yellow_max" value="10"></div>
+        </div>
+
+        <!-- Разница статистики (хозяева - гости) -->
+        <h4 class="mt-4">Разница статистики (хозяева - гости)</h4>
+        <p class="text-muted small">Укажите диапазон разницы показателей (положительное = хозяева больше)</p>
+        <div class="row">
+            <div class="col-md-2"><label>Голы (мин)</label><input type="number" class="form-control" name="diff_goals_min" value="-10"></div>
+            <div class="col-md-2"><label>Голы (макс)</label><input type="number" class="form-control" name="diff_goals_max" value="10"></div>
+            <div class="col-md-2"><label>Угловые (мин)</label><input type="number" class="form-control" name="diff_corners_min" value="-20"></div>
+            <div class="col-md-2"><label>Угловые (макс)</label><input type="number" class="form-control" name="diff_corners_max" value="20"></div>
+            <div class="col-md-2"><label>Удары (мин)</label><input type="number" class="form-control" name="diff_shots_min" value="-30"></div>
+            <div class="col-md-2"><label>Удары (макс)</label><input type="number" class="form-control" name="diff_shots_max" value="30"></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-2"><label>Уд. в створ (мин)</label><input type="number" class="form-control" name="diff_sot_min" value="-15"></div>
+            <div class="col-md-2"><label>Уд. в створ (макс)</label><input type="number" class="form-control" name="diff_sot_max" value="15"></div>
+            <div class="col-md-2"><label>ЖК (мин)</label><input type="number" class="form-control" name="diff_yellow_min" value="-10"></div>
+            <div class="col-md-2"><label>ЖК (макс)</label><input type="number" class="form-control" name="diff_yellow_max" value="10"></div>
         </div>
 
         <!-- Статистика предыдущих матчей (личные встречи) -->

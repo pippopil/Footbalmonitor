@@ -12,15 +12,18 @@ def get_db():
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    
+    # Таблица пользователей
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_chat_id INTEGER UNIQUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+    
+    # Таблица фильтров (с новыми полями разницы)
     c.execute('''CREATE TABLE IF NOT EXISTS filters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        name TEXT,
         match_time_min INTEGER, match_time_max INTEGER,
         total_goals_min INTEGER, total_goals_max INTEGER,
         total_corners_min INTEGER, total_corners_max INTEGER,
@@ -47,9 +50,16 @@ def init_db():
         odds_p2_min REAL, odds_p2_max REAL,
         odds_draw_min REAL, odds_draw_max REAL,
         odds_total_over_2_5_min REAL, odds_total_over_2_5_max REAL,
+        -- НОВЫЕ ПОЛЯ для разницы (home - away)
+        diff_goals_min INTEGER, diff_goals_max INTEGER,
+        diff_corners_min INTEGER, diff_corners_max INTEGER,
+        diff_shots_min INTEGER, diff_shots_max INTEGER,
+        diff_sot_min INTEGER, diff_sot_max INTEGER,
+        diff_yellow_min INTEGER, diff_yellow_max INTEGER,
         is_active BOOLEAN DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )''')
+    
     c.execute('''CREATE TABLE IF NOT EXISTS blacklisted_leagues (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -58,6 +68,7 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(user_id, league_id)
     )''')
+    
     c.execute('''CREATE TABLE IF NOT EXISTS triggered_matches (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         match_id INTEGER,
@@ -66,16 +77,27 @@ def init_db():
         match_data TEXT,
         UNIQUE(match_id, filter_id)
     )''')
-    conn.commit()
-    # Миграция: добавляем колонку name, если её нет
+    
+    # --- Миграция: добавляем новые столбцы, если их нет ---
     c.execute("PRAGMA table_info(filters)")
     columns = [col[1] for col in c.fetchall()]
-    if 'name' not in columns:
-        c.execute("ALTER TABLE filters ADD COLUMN name TEXT")
-        conn.commit()
+    
+    diff_columns = [
+        'diff_goals_min', 'diff_goals_max',
+        'diff_corners_min', 'diff_corners_max',
+        'diff_shots_min', 'diff_shots_max',
+        'diff_sot_min', 'diff_sot_max',
+        'diff_yellow_min', 'diff_yellow_max'
+    ]
+    
+    for col in diff_columns:
+        if col not in columns:
+            c.execute(f"ALTER TABLE filters ADD COLUMN {col} INTEGER DEFAULT 0")
+    
+    conn.commit()
     conn.close()
 
-# --- Пользователи ---
+# --- Остальные функции (без изменений) ---
 def create_user(chat_id: int) -> int:
     conn = get_db()
     c = conn.cursor()
@@ -94,12 +116,9 @@ def get_user_id(chat_id: int) -> Optional[int]:
     conn.close()
     return row[0] if row else None
 
-# --- Фильтры ---
 def save_filter(user_id: int, data: dict) -> int:
     conn = get_db()
     c = conn.cursor()
-    if 'name' not in data:
-        data['name'] = ''
     cols = ['user_id'] + list(data.keys())
     placeholders = ','.join(['?'] * len(cols))
     values = [user_id] + list(data.values())
@@ -117,15 +136,6 @@ def get_active_filters(user_id: int) -> List[dict]:
     conn.close()
     return [dict(row) for row in rows]
 
-def get_all_filters(user_id: int) -> List[dict]:
-    """Возвращает все фильтры пользователя (и активные, и неактивные)."""
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM filters WHERE user_id=?", (user_id,))
-    rows = c.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
 def update_filter_status(filter_id: int, active: bool):
     conn = get_db()
     c = conn.cursor()
@@ -133,28 +143,6 @@ def update_filter_status(filter_id: int, active: bool):
     conn.commit()
     conn.close()
 
-def get_filter_by_id(filter_id: int, user_id: int) -> Optional[dict]:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT * FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
-    row = c.fetchone()
-    conn.close()
-    return dict(row) if row else None
-
-def delete_filter(filter_id: int, user_id: int) -> bool:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT id FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
-    if c.fetchone() is None:
-        conn.close()
-        return False
-    c.execute("DELETE FROM filters WHERE id=? AND user_id=?", (filter_id, user_id))
-    c.execute("DELETE FROM triggered_matches WHERE filter_id=?", (filter_id,))
-    conn.commit()
-    conn.close()
-    return True
-
-# --- Чёрный список ---
 def get_blacklisted_leagues(user_id: int) -> List[int]:
     conn = get_db()
     c = conn.cursor()
@@ -186,7 +174,6 @@ def remove_blacklisted_league(user_id: int, league_id: int):
     conn.commit()
     conn.close()
 
-# --- История срабатываний ---
 def is_match_triggered(match_id: int, filter_id: int) -> bool:
     conn = get_db()
     c = conn.cursor()

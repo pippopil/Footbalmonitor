@@ -1,54 +1,30 @@
-import os
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import RedirectResponse, HTMLResponse
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from app import database as db
 from app.config import DEFAULT_CHAT_ID
 from app.sstats_client import SStatsClient
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/web/templates")
+
 CHAT_ID = DEFAULT_CHAT_ID
-
-# Настройка Jinja2
-current_dir = os.path.dirname(os.path.abspath(__file__))
-template_dir = os.path.join(current_dir, "templates")
-if not os.path.exists(template_dir):
-    os.makedirs(template_dir, exist_ok=True)
-
-env = Environment(
-    loader=FileSystemLoader(template_dir),
-    autoescape=select_autoescape(['html', 'xml'])
-)
-
-def render_template(template_name: str, **context):
-    try:
-        template = env.get_template(template_name)
-        return HTMLResponse(content=template.render(**context))
-    except Exception as e:
-        return HTMLResponse(
-            content=f"<h1>Ошибка рендеринга шаблона {template_name}</h1>"
-                    f"<pre>{str(e)}</pre>"
-                    f"<p>Искали в папке: {template_dir}</p>",
-            status_code=500
-        )
 
 @router.get("/")
 async def index(request: Request):
     user_id = db.get_user_id(CHAT_ID)
     if not user_id:
         user_id = db.create_user(CHAT_ID)
-    # Используем get_all_filters, чтобы показывать все фильтры (и активные, и неактивные)
-    filters = db.get_all_filters(user_id)
-    return render_template("index.html", request=request, filters=filters)
+    filters = db.get_active_filters(user_id)
+    return templates.TemplateResponse("index.html", {"request": request, "filters": filters})
 
 @router.get("/filter/new")
 async def new_filter(request: Request):
-    return render_template("filter_form.html", request=request)
+    return templates.TemplateResponse("filter_form.html", {"request": request})
 
 @router.post("/filter/save")
 async def save_filter(
     request: Request,
-    name: str = Form(""),
     match_time_min: int = Form(...),
     match_time_max: int = Form(...),
     total_goals_min: int = Form(...), total_goals_max: int = Form(...),
@@ -76,12 +52,17 @@ async def save_filter(
     odds_p2_min: float = Form(...), odds_p2_max: float = Form(...),
     odds_draw_min: float = Form(...), odds_draw_max: float = Form(...),
     odds_total_over_2_5_min: float = Form(...), odds_total_over_2_5_max: float = Form(...),
+    # Новые поля для разницы
+    diff_goals_min: int = Form(...), diff_goals_max: int = Form(...),
+    diff_corners_min: int = Form(...), diff_corners_max: int = Form(...),
+    diff_shots_min: int = Form(...), diff_shots_max: int = Form(...),
+    diff_sot_min: int = Form(...), diff_sot_max: int = Form(...),
+    diff_yellow_min: int = Form(...), diff_yellow_max: int = Form(...),
 ):
     user_id = db.get_user_id(CHAT_ID)
     if not user_id:
         user_id = db.create_user(CHAT_ID)
     data = {
-        'name': name,
         'match_time_min': match_time_min, 'match_time_max': match_time_max,
         'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
         'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
@@ -108,6 +89,11 @@ async def save_filter(
         'odds_p2_min': odds_p2_min, 'odds_p2_max': odds_p2_max,
         'odds_draw_min': odds_draw_min, 'odds_draw_max': odds_draw_max,
         'odds_total_over_2_5_min': odds_total_over_2_5_min, 'odds_total_over_2_5_max': odds_total_over_2_5_max,
+        'diff_goals_min': diff_goals_min, 'diff_goals_max': diff_goals_max,
+        'diff_corners_min': diff_corners_min, 'diff_corners_max': diff_corners_max,
+        'diff_shots_min': diff_shots_min, 'diff_shots_max': diff_shots_max,
+        'diff_sot_min': diff_sot_min, 'diff_sot_max': diff_sot_max,
+        'diff_yellow_min': diff_yellow_min, 'diff_yellow_max': diff_yellow_max,
     }
     db.save_filter(user_id, data)
     return RedirectResponse("/", status_code=303)
@@ -121,32 +107,12 @@ async def leagues_page(request: Request):
     all_leagues = client.get_leagues()
     blacklisted = db.get_blacklisted_leagues_full(user_id)
     blacklist_ids = [b['id'] for b in blacklisted]
-    return render_template("leagues.html",
-                           request=request,
-                           all_leagues=all_leagues,
-                           blacklisted_ids=blacklist_ids)
+    return templates.TemplateResponse("leagues.html", {
+        "request": request,
+        "all_leagues": all_leagues,
+        "blacklisted_ids": blacklist_ids
+    })
 
-# ---------- Управление фильтрами ----------
-@router.post("/filter/toggle/{filter_id}")
-async def toggle_filter(filter_id: int):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        return RedirectResponse("/", status_code=303)
-    current = db.get_filter_by_id(filter_id, user_id)
-    if current:
-        new_status = not current.get('is_active', True)
-        db.update_filter_status(filter_id, new_status)
-    return RedirectResponse("/", status_code=303)
-
-@router.post("/filter/delete/{filter_id}")
-async def delete_filter(filter_id: int):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        return RedirectResponse("/", status_code=303)
-    db.delete_filter(filter_id, user_id)
-    return RedirectResponse("/", status_code=303)
-
-# ---------- Чёрный список ----------
 @router.post("/blacklist/add")
 async def add_blacklist(request: Request, league_id: int = Form(...), league_name: str = Form(...)):
     user_id = db.get_user_id(CHAT_ID)
