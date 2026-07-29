@@ -1,14 +1,31 @@
+import os
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse, HTMLResponse
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import database as db
 from app.config import DEFAULT_CHAT_ID
 from app.sstats_client import SStatsClient
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/web/templates")
+
+# Путь к шаблонам
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(CURRENT_DIR, "templates")
+
+# Создаём окружение Jinja2 без кэша (надёжно)
+env = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(['html', 'xml']),
+    cache_size=0,          # полностью отключаем кэш
+    auto_reload=True,      # перезагружать при изменениях
+)
 
 CHAT_ID = DEFAULT_CHAT_ID
+
+# Вспомогательная функция для рендеринга шаблонов
+def render_template(template_name: str, context: dict):
+    template = env.get_template(template_name)
+    return HTMLResponse(content=template.render(**context))
 
 @router.get("/")
 async def index(request: Request):
@@ -16,11 +33,11 @@ async def index(request: Request):
     if not user_id:
         user_id = db.create_user(CHAT_ID)
     filters = db.get_active_filters(user_id)
-    return templates.TemplateResponse("index.html", {"request": request, "filters": filters})
+    return render_template("index.html", {"request": request, "filters": filters})
 
 @router.get("/filter/new")
 async def new_filter(request: Request):
-    return templates.TemplateResponse("filter_form.html", {"request": request})
+    return render_template("filter_form.html", {"request": request})
 
 @router.post("/filter/save")
 async def save_filter(
@@ -52,7 +69,6 @@ async def save_filter(
     odds_p2_min: float = Form(...), odds_p2_max: float = Form(...),
     odds_draw_min: float = Form(...), odds_draw_max: float = Form(...),
     odds_total_over_2_5_min: float = Form(...), odds_total_over_2_5_max: float = Form(...),
-    # Новые поля для разницы
     diff_goals_min: int = Form(...), diff_goals_max: int = Form(...),
     diff_corners_min: int = Form(...), diff_corners_max: int = Form(...),
     diff_shots_min: int = Form(...), diff_shots_max: int = Form(...),
@@ -107,7 +123,7 @@ async def leagues_page(request: Request):
     all_leagues = client.get_leagues()
     blacklisted = db.get_blacklisted_leagues_full(user_id)
     blacklist_ids = [b['id'] for b in blacklisted]
-    return templates.TemplateResponse("leagues.html", {
+    return render_template("leagues.html", {
         "request": request,
         "all_leagues": all_leagues,
         "blacklisted_ids": blacklist_ids
