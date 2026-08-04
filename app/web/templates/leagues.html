@@ -8,7 +8,8 @@
 <body>
 <div class="container mt-4">
     <h2>Управление чёрным списком лиг</h2>
-    <a href="/" class="btn btn-secondary mb-3">Назад к фильтрам</a>
+    <a href="/?chat_id={{ chat_id }}" class="btn btn-secondary mb-3">Назад к фильтрам</a>
+    {% if all_leagues %}
     <table class="table table-bordered">
         <thead>
             <tr><th>Лига</th><th>Действие</th></tr>
@@ -20,14 +21,16 @@
                 <td>
                     {% if league.id in blacklisted_ids %}
                     <form method="post" action="/blacklist/remove" style="display:inline;">
+                        <input type="hidden" name="chat_id" value="{{ chat_id }}">
                         <input type="hidden" name="league_id" value="{{ league.id }}">
-                        <button type="submit" class="btn btn-danger btn-sm">Удалить из чёрного списка</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                     </form>
                     {% else %}
                     <form method="post" action="/blacklist/add" style="display:inline;">
+                        <input type="hidden" name="chat_id" value="{{ chat_id }}">
                         <input type="hidden" name="league_id" value="{{ league.id }}">
                         <input type="hidden" name="league_name" value="{{ league.name }}">
-                        <button type="submit" class="btn btn-warning btn-sm">Добавить в чёрный список</button>
+                        <button type="submit" class="btn btn-warning btn-sm">Добавить</button>
                     </form>
                     {% endif %}
                 </td>
@@ -35,6 +38,9 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <p>Не удалось загрузить список лиг.</p>
+    {% endif %}
 </div>
 </body>
 </html>

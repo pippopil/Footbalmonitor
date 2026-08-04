@@ -22,18 +22,18 @@ class TelegramBot:
             logger.error(f"Send error: {e}")
 
     def run_polling(self):
-        try:
-            self.application = Application.builder().token(self.token).build()
-            self.application.add_handler(CommandHandler("start", self.start_command))
-            logger.info("Telegram бот запускается...")
-            self.application.run_polling()
-        except Exception as e:
-            logger.error(f"Ошибка запуска бота: {e}", exc_info=True)
+        self.application = Application.builder().token(self.token).build()
+        self.application.add_handler(CommandHandler("start", self.start_command))
+        self.application.run_polling()
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
         db.create_user(chat_id)
+        # Замените URL на реальный адрес вашего сервера
+        web_url = "http://localhost:8000"  # или ваш внешний IP/домен
+        link = f"{web_url}/?chat_id={chat_id}"
         await update.message.reply_text(
-            "✅ Бот активирован!\n"
-            "Теперь настройте фильтры через веб-интерфейс: http://ваш_сервер:8000"
+            f"✅ Бот активирован!\n"
+            f"Перейдите по ссылке для настройки фильтров:\n{link}\n\n"
+            f"Также вы можете управлять чёрным списком лиг."
         )

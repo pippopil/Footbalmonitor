@@ -3,125 +3,273 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from app import database as db
-from app.filter_engine import check_filters
-from app.config import CHECK_INTERVAL, DEFAULT_CHAT_ID
+from app.filter_engine import check_filters, check_single_filter, determine_actual_outcome, is_outcome_success
+from app.config import CHECK_INTERVAL
 
 logger = logging.getLogger(__name__)
 
 class MatchScheduler:
-    def __init__(self, sstats, bot, excel, chat_id: int = DEFAULT_CHAT_ID):
+    def __init__(self, sstats, bot, excel):
         self.sstats = sstats
         self.bot = bot
         self.excel = excel
-        self.chat_id = chat_id
         self.scheduler = BackgroundScheduler()
-        self.user_id = db.get_user_id(chat_id)
-        if not self.user_id:
-            self.user_id = db.create_user(chat_id)
 
     def start(self):
         self.scheduler.add_job(
-            self._check,
+            self._check_all_users,
             trigger=IntervalTrigger(seconds=CHECK_INTERVAL),
             id='check_matches',
-            replace_existing=True,
-            max_instances=1,
-            misfire_grace_time=60
+            replace_existing=True
+        )
+        self.scheduler.add_job(
+            self._update_pending_outcomes,
+            trigger=IntervalTrigger(seconds=60),
+            id='update_outcomes',
+            replace_existing=True
+        )
+        # Новая задача для отслеживания коэффициентов
+        self.scheduler.add_job(
+            self._check_odds_changes,
+            trigger=IntervalTrigger(seconds=30),  # отдельный интервал
+            id='check_odds',
+            replace_existing=True
         )
         self.scheduler.start()
         logger.info("Планировщик запущен с интервалом %s сек", CHECK_INTERVAL)
 
-    def _check(self):
-        asyncio.run(self._async_check())
+    def _check_all_users(self):
+        asyncio.run(self._async_check_all_users())
 
-    async def _async_check(self):
+    def _update_pending_outcomes(self):
+        asyncio.run(self._async_update_outcomes())
+
+    def _check_odds_changes(self):
+        asyncio.run(self._async_check_odds_changes())
+
+    async def _async_update_outcomes(self):
         try:
-            logger.info("🔄 Начало проверки матчей")
+            pending = db.get_pending_triggered_matches()
+            for rec in pending:
+                match_id = rec['match_id']
+                filter_id = rec['filter_id']
+                expected = rec['expected_outcome']
+                if not expected:
+                    continue
+                details = self.sstats.get_match_details(match_id)
+                if not details:
+                    continue
+                status = details.get('status', '')
+                if status == 'finished':
+                    actual = determine_actual_outcome(details, expected)
+                    success = is_outcome_success(actual, expected)
+                    db.update_match_outcome(match_id, filter_id, actual, success)
+                    logger.info(f"Обновлён исход для матча {match_id}: ожидалось {expected}, фактически {actual}, успех={success}")
+                elif status in ['not_started', '']:
+                    pass
+        except Exception as e:
+            logger.error(f"Error in update_outcomes: {e}", exc_info=True)
+
+    async def _async_check_all_users(self):
+        try:
+            conn = db.get_db()
+            c = conn.cursor()
+            c.execute("SELECT id, telegram_chat_id FROM users")
+            users = c.fetchall()
+            conn.close()
+            if not users:
+                logger.debug("Нет пользователей")
+                return
+
             matches = self.sstats.get_live_matches()
             if not matches:
-                logger.info("Нет live-матчей")
+                logger.debug("Нет live-матчей")
                 return
 
-            # Получаем начальный список фильтров (для информации)
-            initial_filters = db.get_active_filters(self.user_id)
-            if not initial_filters:
-                logger.info("Нет активных фильтров")
-                return
-
-            logger.info(f"📊 Найдено матчей: {len(matches)}, фильтров: {len(initial_filters)}")
-
-            blacklist = db.get_blacklisted_leagues(self.user_id)
-
-            for match in matches:
-                match_id = match.get('id')
-                if not match_id:
+            for user in users:
+                user_id = user['id']
+                chat_id = user['telegram_chat_id']
+                filters = db.get_active_filters(user_id)
+                if not filters:
                     continue
+                blacklist = db.get_blacklisted_leagues(user_id)
 
-                league_id = match.get('league', {}).get('id')
-                if league_id and league_id in blacklist:
-                    logger.debug(f"Матч {match_id} исключён (чёрный список лиги {league_id})")
-                    continue
+                for match in matches:
+                    match_id = match.get('id')
+                    if not match_id:
+                        continue
+                    league_id = match.get('league', {}).get('id')
+                    if league_id and league_id in blacklist:
+                        continue
 
-                # --- Перепроверка фильтров перед каждым матчем ---
-                current_filters = db.get_active_filters(self.user_id)
-                if not current_filters:
-                    logger.debug("Нет активных фильтров, прекращаем обработку матчей")
-                    break  # выходим из цикла, так как фильтров больше нет
+                    stats = self.sstats.get_match_details(match_id)
+                    if not stats:
+                        continue
+                    odds = self.sstats.get_match_odds(match_id)
+                    glicko = self.sstats.get_glicko(match_id)
 
-                valid_filters = []
-                for f in current_filters:
-                    filter_check = db.get_filter(f['id'])
-                    if filter_check and filter_check.get('is_active', 0):
-                        valid_filters.append(filter_check)
-                if not valid_filters:
-                    logger.debug("Нет активных фильтров после проверки, прекращаем обработку матчей")
-                    break
+                    team1_id = match.get('home', {}).get('id')
+                    team2_id = match.get('away', {}).get('id')
+                    h2h_data = self.sstats.get_head_to_head(team1_id, team2_id, limit=5) if team1_id and team2_id else None
+                    home_recent_agg = self.sstats.get_team_recent_matches(team1_id, venue='home', limit=5) if team1_id else None
+                    away_recent_agg = self.sstats.get_team_recent_matches(team2_id, venue='away', limit=5) if team2_id else None
 
-                # Получаем данные матча
-                stats = self.sstats.get_match_details(match_id)
-                if not stats:
-                    logger.debug(f"Нет статистики для матча {match_id}")
-                    continue
-                odds = self.sstats.get_match_odds(match_id, live=True)
+                    home_recent_matches = self.sstats.get_team_recent_matches_full(team1_id, limit=5, venue='home') if team1_id else []
+                    away_recent_matches = self.sstats.get_team_recent_matches_full(team2_id, limit=5, venue='away') if team2_id else []
 
-                team1_id = match.get('homeTeam', {}).get('id')
-                team2_id = match.get('awayTeam', {}).get('id')
-                h2h_data = self.sstats.get_head_to_head(team1_id, team2_id, limit=5) if team1_id and team2_id else None
-                home_recent = self.sstats.get_team_recent_matches(team1_id, venue='home', limit=5) if team1_id else None
-                away_recent = self.sstats.get_team_recent_matches(team2_id, venue='away', limit=5) if team2_id else None
+                    triggered = check_filters(
+                        match, stats, odds, filters,
+                        h2h_data, home_recent_agg, away_recent_agg,
+                        glicko,
+                        home_recent_matches, away_recent_matches
+                    )
 
-                triggered = check_filters(match, stats, odds, valid_filters, h2h_data, home_recent, away_recent)
-
-                if triggered:
-                    logger.info(f"✅ Матч {match_id} подошёл под {len(triggered)} фильтр(ов)")
-                    for f in triggered:
+                    for item in triggered:
+                        f = item['filter']
                         filter_id = f['id']
-
-                        # Дополнительная проверка перед отправкой
-                        current_filter = db.get_filter(filter_id)
-                        if not current_filter or not current_filter.get('is_active', 0):
-                            logger.info(f"Фильтр {filter_id} был отключён, пропускаем отправку")
-                            continue
-
                         if db.is_match_triggered(match_id, filter_id):
-                            logger.debug(f"Матч {match_id} уже был обработан фильтром {filter_id}")
                             continue
 
-                        msg = self._format_message(match, stats, odds, h2h_data, home_recent, away_recent)
-                        await self.bot.send_message(self.chat_id, msg)
+                        msg = self._format_message(match, stats, odds, h2h_data, home_recent_agg, away_recent_agg, glicko)
+                        await self.bot.send_message(chat_id, msg)
                         self.excel.append_match(match, stats, odds, filter_id)
-                        db.add_triggered_match(match_id, filter_id, match)
-                        logger.info(f"📨 Отправлен сигнал для матча {match_id} по фильтру {filter_id}")
-                else:
-                    logger.debug(f"Матч {match_id} не подошёл ни под один фильтр")
-
-            logger.info("✅ Проверка завершена")
+                        db.add_triggered_match(
+                            match_id,
+                            filter_id,
+                            match,
+                            f.get('expected_outcome', ''),
+                            item['conditions']
+                        )
         except Exception as e:
-            logger.error(f"Ошибка в планировщике: {e}", exc_info=True)
+            logger.error(f"Scheduler error: {e}", exc_info=True)
 
-    def _format_message(self, match, stats, odds, h2h_data=None, home_recent=None, away_recent=None):
-        home_name = match.get('homeTeam', {}).get('name', 'Home')
-        away_name = match.get('awayTeam', {}).get('name', 'Away')
+    async def _async_check_odds_changes(self):
+        try:
+            # Получаем все фильтры с отслеживанием коэффициентов
+            filters = db.get_all_untracked_filters_with_odds()
+            if not filters:
+                logger.debug("Нет фильтров для отслеживания коэффициентов")
+                return
+
+            matches = self.sstats.get_live_matches()
+            if not matches:
+                logger.debug("Нет live-матчей для отслеживания")
+                return
+
+            for f in filters:
+                filter_id = f['id']
+                target = f.get('odds_target', '')
+                threshold = float(f.get('odds_change_threshold', 0.0))
+                change_type = f.get('odds_change_type', 'absolute')
+                direction = f.get('odds_direction', 'down')
+                user_id = f['user_id']
+                # Получаем chat_id пользователя
+                chat_id = db.get_user_id(user_id)  # но у нас есть функция get_user_id, которая возвращает id по chat_id, а нам нужно наоборот. Исправим: создадим функцию get_chat_id_by_user_id
+                # Лучше получить chat_id из базы
+                conn = db.get_db()
+                c = conn.cursor()
+                c.execute("SELECT telegram_chat_id FROM users WHERE id=?", (user_id,))
+                row = c.fetchone()
+                conn.close()
+                if not row:
+                    continue
+                chat_id = row[0]
+
+                for match in matches:
+                    match_id = match.get('id')
+                    if not match_id:
+                        continue
+
+                    # Проверяем, подходит ли матч под основные условия фильтра
+                    # Для этого нам нужны stats, odds, glicko и т.д.
+                    # Получаем данные
+                    stats = self.sstats.get_match_details(match_id)
+                    if not stats:
+                        continue
+                    odds = self.sstats.get_match_odds(match_id, live=True)  # live коэффициенты
+                    if not odds:
+                        continue
+                    glicko = self.sstats.get_glicko(match_id)
+
+                    team1_id = match.get('home', {}).get('id')
+                    team2_id = match.get('away', {}).get('id')
+                    h2h_data = self.sstats.get_head_to_head(team1_id, team2_id, limit=5) if team1_id and team2_id else None
+                    home_recent_agg = self.sstats.get_team_recent_matches(team1_id, venue='home', limit=5) if team1_id else None
+                    away_recent_agg = self.sstats.get_team_recent_matches(team2_id, venue='away', limit=5) if team2_id else None
+                    home_recent_matches = self.sstats.get_team_recent_matches_full(team1_id, limit=5, venue='home') if team1_id else []
+                    away_recent_matches = self.sstats.get_team_recent_matches_full(team2_id, limit=5, venue='away') if team2_id else []
+
+                    # Проверяем основной фильтр
+                    if not check_single_filter(match, stats, odds, f,
+                                               h2h_data, home_recent_agg, away_recent_agg,
+                                               glicko, home_recent_matches, away_recent_matches):
+                        # Если фильтр не подходит, пропускаем
+                        continue
+
+                    # Получаем текущее значение коэффициента для целевого исхода
+                    if target == 'p1':
+                        current_val = odds.get('p1', 0.0)
+                    elif target == 'p2':
+                        current_val = odds.get('p2', 0.0)
+                    elif target == 'draw':
+                        current_val = odds.get('draw', 0.0)
+                    elif target == 'total_over_2_5':
+                        current_val = odds.get('total_over_2_5', 0.0)
+                    else:
+                        continue
+                    if current_val == 0:
+                        continue
+
+                    # Получаем состояние отслеживания
+                    track = db.get_odds_tracking(filter_id, match_id)
+                    if not track:
+                        # Создаём запись с начальным значением
+                        db.upsert_odds_tracking(filter_id, match_id, current_val, current_val)
+                        logger.debug(f"Создана запись отслеживания для фильтра {filter_id}, матч {match_id}, начальное {current_val}")
+                        continue
+
+                    if track.get('triggered'):
+                        continue
+
+                    initial = track.get('initial_value', current_val)
+                    # Вычисляем изменение
+                    if change_type == 'absolute':
+                        change = current_val - initial
+                    else:  # percent
+                        change = (current_val - initial) / initial * 100 if initial != 0 else 0
+
+                    # Проверяем направление и порог
+                    if direction == 'down':
+                        if change <= -threshold:
+                            # Сигнал!
+                            await self._send_odds_signal(match, f, target, initial, current_val, change, chat_id)
+                            db.mark_odds_tracking_triggered(filter_id, match_id)
+                            logger.info(f"Отправлен сигнал по коэффициентам: фильтр {filter_id}, матч {match_id}, изменение {change}")
+                    elif direction == 'up':
+                        if change >= threshold:
+                            await self._send_odds_signal(match, f, target, initial, current_val, change, chat_id)
+                            db.mark_odds_tracking_triggered(filter_id, match_id)
+                            logger.info(f"Отправлен сигнал по коэффициентам: фильтр {filter_id}, матч {match_id}, изменение {change}")
+        except Exception as e:
+            logger.error(f"Error checking odds: {e}", exc_info=True)
+
+    async def _send_odds_signal(self, match, filter_data, target, initial, current, change, chat_id):
+        home = match.get('home', {}).get('name', 'Home')
+        away = match.get('away', {}).get('name', 'Away')
+        change_type = filter_data.get('odds_change_type', 'absolute')
+        direction = filter_data.get('odds_direction', 'down')
+        msg = (f"📊 ИЗМЕНЕНИЕ КОЭФФИЦИЕНТА!\n"
+               f"{home} vs {away}\n"
+               f"Исход: {target}\n"
+               f"Начальный коэффициент: {initial:.2f}\n"
+               f"Текущий коэффициент: {current:.2f}\n"
+               f"Изменение: {change:.2f} {'%' if change_type == 'percent' else ''}\n"
+               f"Фильтр #{filter_data['id']}")
+        await self.bot.send_message(chat_id, msg)
+
+    def _format_message(self, match, stats, odds, h2h_data, home_recent, away_recent, glicko):
+        home_name = match.get('home', {}).get('name', 'Home')
+        away_name = match.get('away', {}).get('name', 'Away')
         minute = match.get('minute', 0)
         home_goals = stats.get('goals', {}).get('home', 0)
         away_goals = stats.get('goals', {}).get('away', 0)
@@ -153,4 +301,6 @@ class MatchScheduler:
             msg += f"\nСр. голов хозяев дома (последние 5): {home_recent.get('avg_goals', 0):.2f}"
         if away_recent:
             msg += f"\nСр. голов гостей в гостях (последние 5): {away_recent.get('avg_goals', 0):.2f}"
+        if glicko:
+            msg += f"\n🧠 Glicko: П1={glicko.get('home_prob',0)}%, Ничья={glicko.get('draw_prob',0)}%, П2={glicko.get('away_prob',0)}%"
         return msg

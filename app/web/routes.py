@@ -1,58 +1,62 @@
-import os
-import json
-from fastapi import APIRouter, Request, Form, Path
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import database as db
-from app.config import DEFAULT_CHAT_ID
 from app.sstats_client import SStatsClient
+import logging
+import os
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(CURRENT_DIR, "templates")
-
+template_dir = os.path.join(os.path.dirname(__file__), "templates")
 env = Environment(
-    loader=FileSystemLoader(TEMPLATES_DIR),
+    loader=FileSystemLoader(template_dir),
     autoescape=select_autoescape(['html', 'xml']),
     cache_size=0,
-    auto_reload=True,
+    auto_reload=True
 )
 
-CHAT_ID = DEFAULT_CHAT_ID
-
-def render_template(template_name: str, context: dict):
-    template = env.get_template(template_name)
-    return HTMLResponse(content=template.render(**context))
+def clean_chat_id(raw: str) -> int:
+    if not raw:
+        raise ValueError("Missing chat_id")
+    cleaned = raw.strip().rstrip('.')
+    return int(cleaned)
 
 @router.get("/")
 async def index(request: Request):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    filters = db.get_all_filters(user_id)
-    return render_template("index.html", {"request": request, "filters": filters})
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+        all_filters = db.get_all_filters(user_id)
+        template = env.get_template("index.html")
+        html = template.render(filters=all_filters, chat_id=chat_id)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in index: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.get("/filter/new")
 async def new_filter(request: Request):
-    return render_template("filter_form.html", {"request": request, "filter": None})
-
-@router.get("/filter/edit/{filter_id}")
-async def edit_filter(request: Request, filter_id: int = Path(...)):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    f = db.get_filter(filter_id)
-    if not f or f['user_id'] != user_id:
-        return RedirectResponse("/", status_code=303)
-    return render_template("filter_form.html", {"request": request, "filter": f})
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        template = env.get_template("filter_form.html")
+        html = template.render(chat_id=chat_id, filter=None)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in new_filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.post("/filter/save")
 async def save_filter(
     request: Request,
-    name: str = Form(...),
-    match_time_min: int = Form(...),
-    match_time_max: int = Form(...),
+    chat_id: int = Form(...),
+    match_time_min: int = Form(...), match_time_max: int = Form(...),
     total_goals_min: int = Form(...), total_goals_max: int = Form(...),
     total_corners_min: int = Form(...), total_corners_max: int = Form(...),
     total_shots_min: int = Form(...), total_shots_max: int = Form(...),
@@ -78,59 +82,91 @@ async def save_filter(
     odds_p2_min: float = Form(...), odds_p2_max: float = Form(...),
     odds_draw_min: float = Form(...), odds_draw_max: float = Form(...),
     odds_total_over_2_5_min: float = Form(...), odds_total_over_2_5_max: float = Form(...),
-    diff_goals_min: int = Form(...), diff_goals_max: int = Form(...),
-    diff_corners_min: int = Form(...), diff_corners_max: int = Form(...),
-    diff_shots_min: int = Form(...), diff_shots_max: int = Form(...),
-    diff_sot_min: int = Form(...), diff_sot_max: int = Form(...),
-    diff_yellow_min: int = Form(...), diff_yellow_max: int = Form(...),
+    glicko_home_min: float = Form(...), glicko_home_max: float = Form(...),
+    glicko_away_min: float = Form(...), glicko_away_max: float = Form(...),
+    glicko_draw_min: float = Form(...), glicko_draw_max: float = Form(...),
+    expected_outcome: str = Form(...),
+    rules: str = Form(...),
+    rule_logic: str = Form(...),
+    track_odds: bool = Form(...),   # чекбокс
+    odds_target: str = Form(...),
+    odds_change_threshold: float = Form(...),
+    odds_change_type: str = Form(...),
+    odds_direction: str = Form(...)
 ):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    data = {
-        'name': name,
-        'match_time_min': match_time_min, 'match_time_max': match_time_max,
-        'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
-        'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
-        'total_shots_min': total_shots_min, 'total_shots_max': total_shots_max,
-        'total_sot_min': total_sot_min, 'total_sot_max': total_sot_max,
-        'total_yellow_min': total_yellow_min, 'total_yellow_max': total_yellow_max,
-        'home_goals_min': home_goals_min, 'home_goals_max': home_goals_max,
-        'away_goals_min': away_goals_min, 'away_goals_max': away_goals_max,
-        'home_corners_min': home_corners_min, 'home_corners_max': home_corners_max,
-        'away_corners_min': away_corners_min, 'away_corners_max': away_corners_max,
-        'home_shots_min': home_shots_min, 'home_shots_max': home_shots_max,
-        'away_shots_min': away_shots_min, 'away_shots_max': away_shots_max,
-        'home_sot_min': home_sot_min, 'home_sot_max': home_sot_max,
-        'away_sot_min': away_sot_min, 'away_sot_max': away_sot_max,
-        'home_yellow_min': home_yellow_min, 'home_yellow_max': home_yellow_max,
-        'away_yellow_min': away_yellow_min, 'away_yellow_max': away_yellow_max,
-        'h2h_matches_count': h2h_matches_count,
-        'h2h_avg_goals_min': h2h_avg_goals_min, 'h2h_avg_goals_max': h2h_avg_goals_max,
-        'home_recent_count': home_recent_count,
-        'home_recent_goals_min': home_recent_goals_min, 'home_recent_goals_max': home_recent_goals_max,
-        'away_recent_count': away_recent_count,
-        'away_recent_goals_min': away_recent_goals_min, 'away_recent_goals_max': away_recent_goals_max,
-        'odds_p1_min': odds_p1_min, 'odds_p1_max': odds_p1_max,
-        'odds_p2_min': odds_p2_min, 'odds_p2_max': odds_p2_max,
-        'odds_draw_min': odds_draw_min, 'odds_draw_max': odds_draw_max,
-        'odds_total_over_2_5_min': odds_total_over_2_5_min, 'odds_total_over_2_5_max': odds_total_over_2_5_max,
-        'diff_goals_min': diff_goals_min, 'diff_goals_max': diff_goals_max,
-        'diff_corners_min': diff_corners_min, 'diff_corners_max': diff_corners_max,
-        'diff_shots_min': diff_shots_min, 'diff_shots_max': diff_shots_max,
-        'diff_sot_min': diff_sot_min, 'diff_sot_max': diff_sot_max,
-        'diff_yellow_min': diff_yellow_min, 'diff_yellow_max': diff_yellow_max,
-    }
-    db.save_filter(user_id, data)
-    return RedirectResponse("/", status_code=303)
+    try:
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+        data = {
+            'match_time_min': match_time_min, 'match_time_max': match_time_max,
+            'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
+            'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
+            'total_shots_min': total_shots_min, 'total_shots_max': total_shots_max,
+            'total_sot_min': total_sot_min, 'total_sot_max': total_sot_max,
+            'total_yellow_min': total_yellow_min, 'total_yellow_max': total_yellow_max,
+            'home_goals_min': home_goals_min, 'home_goals_max': home_goals_max,
+            'away_goals_min': away_goals_min, 'away_goals_max': away_goals_max,
+            'home_corners_min': home_corners_min, 'home_corners_max': home_corners_max,
+            'away_corners_min': away_corners_min, 'away_corners_max': away_corners_max,
+            'home_shots_min': home_shots_min, 'home_shots_max': home_shots_max,
+            'away_shots_min': away_shots_min, 'away_shots_max': away_shots_max,
+            'home_sot_min': home_sot_min, 'home_sot_max': home_sot_max,
+            'away_sot_min': away_sot_min, 'away_sot_max': away_sot_max,
+            'home_yellow_min': home_yellow_min, 'home_yellow_max': home_yellow_max,
+            'away_yellow_min': away_yellow_min, 'away_yellow_max': away_yellow_max,
+            'h2h_matches_count': h2h_matches_count,
+            'h2h_avg_goals_min': h2h_avg_goals_min, 'h2h_avg_goals_max': h2h_avg_goals_max,
+            'home_recent_count': home_recent_count,
+            'home_recent_goals_min': home_recent_goals_min, 'home_recent_goals_max': home_recent_goals_max,
+            'away_recent_count': away_recent_count,
+            'away_recent_goals_min': away_recent_goals_min, 'away_recent_goals_max': away_recent_goals_max,
+            'odds_p1_min': odds_p1_min, 'odds_p1_max': odds_p1_max,
+            'odds_p2_min': odds_p2_min, 'odds_p2_max': odds_p2_max,
+            'odds_draw_min': odds_draw_min, 'odds_draw_max': odds_draw_max,
+            'odds_total_over_2_5_min': odds_total_over_2_5_min, 'odds_total_over_2_5_max': odds_total_over_2_5_max,
+            'glicko_home_min': glicko_home_min, 'glicko_home_max': glicko_home_max,
+            'glicko_away_min': glicko_away_min, 'glicko_away_max': glicko_away_max,
+            'glicko_draw_min': glicko_draw_min, 'glicko_draw_max': glicko_draw_max,
+            'expected_outcome': expected_outcome,
+            'rules': rules,
+            'rule_logic': rule_logic,
+            'track_odds': 1 if track_odds else 0,
+            'odds_target': odds_target,
+            'odds_change_threshold': odds_change_threshold,
+            'odds_change_type': odds_change_type,
+            'odds_direction': odds_direction
+        }
+        db.save_filter(user_id, data)
+        return RedirectResponse(f"/?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error saving filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
+
+@router.get("/filter/edit/{filter_id}")
+async def edit_filter(request: Request, filter_id: int):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        filter_data = db.get_filter(filter_id)
+        if not filter_data:
+            return HTMLResponse("Фильтр не найден", status_code=404)
+        user_id = db.get_user_id(chat_id)
+        if filter_data.get('user_id') != user_id:
+            return HTMLResponse("Доступ запрещён", status_code=403)
+        template = env.get_template("edit_filter.html")
+        html = template.render(filter=filter_data, chat_id=chat_id)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in edit_filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.post("/filter/update/{filter_id}")
 async def update_filter(
     request: Request,
-    filter_id: int = Path(...),
-    name: str = Form(...),
-    match_time_min: int = Form(...),
-    match_time_max: int = Form(...),
+    filter_id: int,
+    chat_id: int = Form(...),
+    match_time_min: int = Form(...), match_time_max: int = Form(...),
     total_goals_min: int = Form(...), total_goals_max: int = Form(...),
     total_corners_min: int = Form(...), total_corners_max: int = Form(...),
     total_shots_min: int = Form(...), total_shots_max: int = Form(...),
@@ -156,123 +192,164 @@ async def update_filter(
     odds_p2_min: float = Form(...), odds_p2_max: float = Form(...),
     odds_draw_min: float = Form(...), odds_draw_max: float = Form(...),
     odds_total_over_2_5_min: float = Form(...), odds_total_over_2_5_max: float = Form(...),
-    diff_goals_min: int = Form(...), diff_goals_max: int = Form(...),
-    diff_corners_min: int = Form(...), diff_corners_max: int = Form(...),
-    diff_shots_min: int = Form(...), diff_shots_max: int = Form(...),
-    diff_sot_min: int = Form(...), diff_sot_max: int = Form(...),
-    diff_yellow_min: int = Form(...), diff_yellow_max: int = Form(...),
+    glicko_home_min: float = Form(...), glicko_home_max: float = Form(...),
+    glicko_away_min: float = Form(...), glicko_away_max: float = Form(...),
+    glicko_draw_min: float = Form(...), glicko_draw_max: float = Form(...),
+    expected_outcome: str = Form(...),
+    rules: str = Form(...),
+    rule_logic: str = Form(...),
+    track_odds: bool = Form(...),
+    odds_target: str = Form(...),
+    odds_change_threshold: float = Form(...),
+    odds_change_type: str = Form(...),
+    odds_direction: str = Form(...)
 ):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    # Проверяем, что фильтр принадлежит пользователю
-    f = db.get_filter(filter_id)
-    if not f or f['user_id'] != user_id:
-        return RedirectResponse("/", status_code=303)
-    data = {
-        'name': name,
-        'match_time_min': match_time_min, 'match_time_max': match_time_max,
-        'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
-        'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
-        'total_shots_min': total_shots_min, 'total_shots_max': total_shots_max,
-        'total_sot_min': total_sot_min, 'total_sot_max': total_sot_max,
-        'total_yellow_min': total_yellow_min, 'total_yellow_max': total_yellow_max,
-        'home_goals_min': home_goals_min, 'home_goals_max': home_goals_max,
-        'away_goals_min': away_goals_min, 'away_goals_max': away_goals_max,
-        'home_corners_min': home_corners_min, 'home_corners_max': home_corners_max,
-        'away_corners_min': away_corners_min, 'away_corners_max': away_corners_max,
-        'home_shots_min': home_shots_min, 'home_shots_max': home_shots_max,
-        'away_shots_min': away_shots_min, 'away_shots_max': away_shots_max,
-        'home_sot_min': home_sot_min, 'home_sot_max': home_sot_max,
-        'away_sot_min': away_sot_min, 'away_sot_max': away_sot_max,
-        'home_yellow_min': home_yellow_min, 'home_yellow_max': home_yellow_max,
-        'away_yellow_min': away_yellow_min, 'away_yellow_max': away_yellow_max,
-        'h2h_matches_count': h2h_matches_count,
-        'h2h_avg_goals_min': h2h_avg_goals_min, 'h2h_avg_goals_max': h2h_avg_goals_max,
-        'home_recent_count': home_recent_count,
-        'home_recent_goals_min': home_recent_goals_min, 'home_recent_goals_max': home_recent_goals_max,
-        'away_recent_count': away_recent_count,
-        'away_recent_goals_min': away_recent_goals_min, 'away_recent_goals_max': away_recent_goals_max,
-        'odds_p1_min': odds_p1_min, 'odds_p1_max': odds_p1_max,
-        'odds_p2_min': odds_p2_min, 'odds_p2_max': odds_p2_max,
-        'odds_draw_min': odds_draw_min, 'odds_draw_max': odds_draw_max,
-        'odds_total_over_2_5_min': odds_total_over_2_5_min, 'odds_total_over_2_5_max': odds_total_over_2_5_max,
-        'diff_goals_min': diff_goals_min, 'diff_goals_max': diff_goals_max,
-        'diff_corners_min': diff_corners_min, 'diff_corners_max': diff_corners_max,
-        'diff_shots_min': diff_shots_min, 'diff_shots_max': diff_shots_max,
-        'diff_sot_min': diff_sot_min, 'diff_sot_max': diff_sot_max,
-        'diff_yellow_min': diff_yellow_min, 'diff_yellow_max': diff_yellow_max,
-    }
-    db.update_filter(filter_id, data)
-    return RedirectResponse("/", status_code=303)
+    try:
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+        filter_data = db.get_filter(filter_id)
+        if not filter_data or filter_data.get('user_id') != user_id:
+            return HTMLResponse("Доступ запрещён", status_code=403)
+        data = {
+            'match_time_min': match_time_min, 'match_time_max': match_time_max,
+            'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
+            'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
+            'total_shots_min': total_shots_min, 'total_shots_max': total_shots_max,
+            'total_sot_min': total_sot_min, 'total_sot_max': total_sot_max,
+            'total_yellow_min': total_yellow_min, 'total_yellow_max': total_yellow_max,
+            'home_goals_min': home_goals_min, 'home_goals_max': home_goals_max,
+            'away_goals_min': away_goals_min, 'away_goals_max': away_goals_max,
+            'home_corners_min': home_corners_min, 'home_corners_max': home_corners_max,
+            'away_corners_min': away_corners_min, 'away_corners_max': away_corners_max,
+            'home_shots_min': home_shots_min, 'home_shots_max': home_shots_max,
+            'away_shots_min': away_shots_min, 'away_shots_max': away_shots_max,
+            'home_sot_min': home_sot_min, 'home_sot_max': home_sot_max,
+            'away_sot_min': away_sot_min, 'away_sot_max': away_sot_max,
+            'home_yellow_min': home_yellow_min, 'home_yellow_max': home_yellow_max,
+            'away_yellow_min': away_yellow_min, 'away_yellow_max': away_yellow_max,
+            'h2h_matches_count': h2h_matches_count,
+            'h2h_avg_goals_min': h2h_avg_goals_min, 'h2h_avg_goals_max': h2h_avg_goals_max,
+            'home_recent_count': home_recent_count,
+            'home_recent_goals_min': home_recent_goals_min, 'home_recent_goals_max': home_recent_goals_max,
+            'away_recent_count': away_recent_count,
+            'away_recent_goals_min': away_recent_goals_min, 'away_recent_goals_max': away_recent_goals_max,
+            'odds_p1_min': odds_p1_min, 'odds_p1_max': odds_p1_max,
+            'odds_p2_min': odds_p2_min, 'odds_p2_max': odds_p2_max,
+            'odds_draw_min': odds_draw_min, 'odds_draw_max': odds_draw_max,
+            'odds_total_over_2_5_min': odds_total_over_2_5_min, 'odds_total_over_2_5_max': odds_total_over_2_5_max,
+            'glicko_home_min': glicko_home_min, 'glicko_home_max': glicko_home_max,
+            'glicko_away_min': glicko_away_min, 'glicko_away_max': glicko_away_max,
+            'glicko_draw_min': glicko_draw_min, 'glicko_draw_max': glicko_draw_max,
+            'expected_outcome': expected_outcome,
+            'rules': rules,
+            'rule_logic': rule_logic,
+            'track_odds': 1 if track_odds else 0,
+            'odds_target': odds_target,
+            'odds_change_threshold': odds_change_threshold,
+            'odds_change_type': odds_change_type,
+            'odds_direction': odds_direction
+        }
+        db.update_filter(filter_id, data)
+        return RedirectResponse(f"/?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error updating filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
-@router.post("/filter/toggle/{filter_id}")
-async def toggle_filter(filter_id: int = Path(...)):
-    conn = db.get_db()
-    c = conn.cursor()
-    c.execute("SELECT is_active FROM filters WHERE id=?", (filter_id,))
-    row = c.fetchone()
-    if row:
-        new_status = 0 if row[0] == 1 else 1
-        db.update_filter_status(filter_id, new_status)
-    conn.close()
-    return RedirectResponse("/", status_code=303)
+@router.get("/filter/delete/{filter_id}")
+async def delete_filter(request: Request, filter_id: int):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            return HTMLResponse("Пользователь не найден", status_code=404)
+        filter_data = db.get_filter(filter_id)
+        if not filter_data or filter_data.get('user_id') != user_id:
+            return HTMLResponse("Доступ запрещён", status_code=403)
+        db.delete_filter(filter_id)
+        return RedirectResponse(f"/?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error deleting filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
-@router.post("/filter/delete/{filter_id}")
-async def delete_filter(filter_id: int = Path(...)):
-    conn = db.get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM filters WHERE id=?", (filter_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse("/", status_code=303)
+@router.get("/filter/toggle/{filter_id}")
+async def toggle_filter(request: Request, filter_id: int):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            return HTMLResponse("Пользователь не найден", status_code=404)
+        filter_data = db.get_filter(filter_id)
+        if not filter_data or filter_data.get('user_id') != user_id:
+            return HTMLResponse("Доступ запрещён", status_code=403)
+        new_status = not filter_data.get('is_active', False)
+        db.update_filter(filter_id, {'is_active': 1 if new_status else 0})
+        return RedirectResponse(f"/?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error toggling filter: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
-@router.get("/signals")
-async def signals_page(request: Request):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    signals = db.get_signals(user_id, limit=100)
-    for signal in signals:
-        if signal.get('match_data'):
-            try:
-                signal['match_data'] = json.loads(signal['match_data'])
-            except:
-                signal['match_data'] = {}
-    return render_template("signals.html", {"request": request, "signals": signals})
-
-@router.post("/signals/clear")
-async def clear_signals():
-    user_id = db.get_user_id(CHAT_ID)
-    if user_id:
-        db.clear_signals(user_id)
-    return RedirectResponse("/signals", status_code=303)
+@router.get("/filter/stats/{filter_id}")
+async def filter_stats(request: Request, filter_id: int):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            return HTMLResponse("Пользователь не найден", status_code=404)
+        filter_data = db.get_filter(filter_id)
+        if not filter_data or filter_data.get('user_id') != user_id:
+            return HTMLResponse("Доступ запрещён", status_code=403)
+        stats = db.get_filter_stats(filter_id)
+        recent = db.get_recent_triggered_for_filter(filter_id)
+        template = env.get_template("filter_stats.html")
+        html = template.render(filter=filter_data, stats=stats, recent=recent, chat_id=chat_id)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in stats: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.get("/leagues")
 async def leagues_page(request: Request):
-    user_id = db.get_user_id(CHAT_ID)
-    if not user_id:
-        user_id = db.create_user(CHAT_ID)
-    client = SStatsClient()
-    all_leagues = client.get_leagues()
-    blacklisted = db.get_blacklisted_leagues_full(user_id)
-    blacklist_ids = [b['id'] for b in blacklisted]
-    return render_template("leagues.html", {
-        "request": request,
-        "all_leagues": all_leagues,
-        "blacklisted_ids": blacklist_ids
-    })
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+        client = SStatsClient()
+        all_leagues = client.get_leagues()
+        if not isinstance(all_leagues, list):
+            all_leagues = []
+        blacklisted = db.get_blacklisted_leagues_full(user_id)
+        blacklist_ids = [b['id'] for b in blacklisted]
+        template = env.get_template("leagues.html")
+        html = template.render(all_leagues=all_leagues, blacklisted_ids=blacklist_ids, chat_id=chat_id)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in leagues: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.post("/blacklist/add")
-async def add_blacklist(request: Request, league_id: int = Form(...), league_name: str = Form(...)):
-    user_id = db.get_user_id(CHAT_ID)
-    if user_id:
-        db.add_blacklisted_league(user_id, league_id, league_name)
-    return RedirectResponse("/leagues", status_code=303)
+async def add_blacklist(request: Request, chat_id: int = Form(...), league_id: int = Form(...), league_name: str = Form(...)):
+    try:
+        user_id = db.get_user_id(chat_id)
+        if user_id:
+            db.add_blacklisted_league(user_id, league_id, league_name)
+        return RedirectResponse(f"/leagues?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error adding blacklist: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.post("/blacklist/remove")
-async def remove_blacklist(request: Request, league_id: int = Form(...)):
-    user_id = db.get_user_id(CHAT_ID)
-    if user_id:
-        db.remove_blacklisted_league(user_id, league_id)
-    return RedirectResponse("/leagues", status_code=303)
+async def remove_blacklist(request: Request, chat_id: int = Form(...), league_id: int = Form(...)):
+    try:
+        user_id = db.get_user_id(chat_id)
+        if user_id:
+            db.remove_blacklisted_league(user_id, league_id)
+        return RedirectResponse(f"/leagues?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error removing blacklist: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
