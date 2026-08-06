@@ -12,6 +12,7 @@
     <div class="mb-3">
         <a href="/filter/new?chat_id={{ chat_id }}" class="btn btn-success">Создать новый фильтр</a>
         <a href="/leagues?chat_id={{ chat_id }}" class="btn btn-secondary">Управление чёрным списком лиг</a>
+        <a href="/archive?chat_id={{ chat_id }}" class="btn btn-info">Архив сигналов</a>
     </div>
 
     <!-- Вкладки -->
@@ -28,11 +29,9 @@
     </ul>
     <div class="tab-content mt-3">
         <div class="tab-pane fade show active" id="all" role="tabpanel">
-            {# Используем оригинальный список filters #}
             {% include "_filter_table.html" %}
         </div>
         <div class="tab-pane fade" id="active" role="tabpanel">
-            {# Переопределяем filters только для этого блока #}
             {% set active_filters = filters | selectattr('is_active', 'equalto', 1) | list %}
             {% with filters = active_filters %}
                 {% include "_filter_table.html" %}

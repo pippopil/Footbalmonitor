@@ -5,6 +5,7 @@ from app import database as db
 from app.sstats_client import SStatsClient
 import logging
 import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ async def save_filter(
     expected_outcome: str = Form(...),
     rules: str = Form(...),
     rule_logic: str = Form(...),
-    track_odds: bool = Form(...),   # чекбокс
+    track_odds: bool = Form(...),
     odds_target: str = Form(...),
     odds_change_threshold: float = Form(...),
     odds_change_type: str = Form(...),
@@ -309,6 +310,54 @@ async def filter_stats(request: Request, filter_id: int):
         return HTMLResponse(content=html)
     except Exception as e:
         logger.error(f"Error in stats: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
+
+# --- НОВЫЙ МАРШРУТ: Архив сигналов ---
+@router.get("/archive")
+async def archive(request: Request):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+
+        filter_id = request.query_params.get("filter_id")
+        if filter_id:
+            filter_id = int(filter_id)
+        match_text = request.query_params.get("match_text")
+        from_date = request.query_params.get("from_date")
+        to_date = request.query_params.get("to_date")
+        page = int(request.query_params.get("page", 1))
+        limit = 20
+        offset = (page - 1) * limit
+
+        filters = db.get_user_filters_for_archive(user_id)
+        total = db.get_triggered_matches_count(user_id, filter_id, match_text, from_date, to_date)
+        matches = db.get_triggered_matches(user_id, filter_id, match_text, from_date, to_date, limit, offset)
+
+        # Распарсим match_data для каждого сигнала
+        for s in matches:
+            s['match'] = json.loads(s['match_data']) if s['match_data'] else {}
+
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+        template = env.get_template("archive.html")
+        html = template.render(
+            chat_id=chat_id,
+            signals=matches,
+            total=total,
+            page=page,
+            total_pages=total_pages,
+            filters=filters,
+            selected_filter=filter_id,
+            match_text=match_text or '',
+            from_date=from_date or '',
+            to_date=to_date or ''
+        )
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in archive: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
 @router.get("/leagues")

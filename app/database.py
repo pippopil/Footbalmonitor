@@ -365,3 +365,73 @@ def mark_odds_tracking_triggered(filter_id: int, match_id: int):
     c.execute("UPDATE odds_tracking SET triggered=1 WHERE filter_id=? AND match_id=?", (filter_id, match_id))
     conn.commit()
     conn.close()
+
+# --- Архив сигналов ---
+def get_triggered_matches_count(user_id: int, filter_id: int = None, match_text: str = None,
+                                from_date: str = None, to_date: str = None) -> int:
+    conn = get_db()
+    c = conn.cursor()
+    query = '''
+        SELECT COUNT(*) 
+        FROM triggered_matches tm
+        JOIN filters f ON tm.filter_id = f.id
+        WHERE f.user_id = ?
+    '''
+    params = [user_id]
+    if filter_id:
+        query += " AND tm.filter_id = ?"
+        params.append(filter_id)
+    if match_text:
+        query += " AND tm.match_data LIKE ?"
+        params.append(f'%{match_text}%')
+    if from_date:
+        query += " AND tm.triggered_at >= ?"
+        params.append(from_date)
+    if to_date:
+        query += " AND tm.triggered_at <= ?"
+        params.append(to_date)
+    c.execute(query, params)
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+def get_triggered_matches(user_id: int, filter_id: int = None, match_text: str = None,
+                          from_date: str = None, to_date: str = None,
+                          limit: int = 20, offset: int = 0) -> List[dict]:
+    conn = get_db()
+    c = conn.cursor()
+    query = '''
+        SELECT tm.id, tm.match_id, tm.triggered_at, tm.match_data, 
+               tm.expected_outcome, tm.actual_outcome, tm.is_success, tm.conditions,
+               f.id as filter_id
+        FROM triggered_matches tm
+        JOIN filters f ON tm.filter_id = f.id
+        WHERE f.user_id = ?
+    '''
+    params = [user_id]
+    if filter_id:
+        query += " AND tm.filter_id = ?"
+        params.append(filter_id)
+    if match_text:
+        query += " AND tm.match_data LIKE ?"
+        params.append(f'%{match_text}%')
+    if from_date:
+        query += " AND tm.triggered_at >= ?"
+        params.append(from_date)
+    if to_date:
+        query += " AND tm.triggered_at <= ?"
+        params.append(to_date)
+    query += " ORDER BY tm.triggered_at DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_user_filters_for_archive(user_id: int) -> List[dict]:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, match_time_min, match_time_max FROM filters WHERE user_id=? ORDER BY id", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]

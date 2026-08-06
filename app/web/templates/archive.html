@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Архив сигналов</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>Архив сигналов</h2>
+    <div class="mb-3">
+        <a href="/?chat_id={{ chat_id }}" class="btn btn-secondary">Назад к фильтрам</a>
+        <a href="/archive?chat_id={{ chat_id }}" class="btn btn-outline-primary">Обновить</a>
+    </div>
+
+    <!-- Форма фильтрации -->
+    <form method="get" action="/archive" class="row g-3 mb-4">
+        <input type="hidden" name="chat_id" value="{{ chat_id }}">
+        <div class="col-md-3">
+            <label>Фильтр</label>
+            <select name="filter_id" class="form-select">
+                <option value="">Все</option>
+                {% for f in filters %}
+                <option value="{{ f.id }}" {% if selected_filter == f.id %}selected{% endif %}>
+                    Фильтр #{{ f.id }} ({{ f.match_time_min }}-{{ f.match_time_max }} мин)
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label>Матч (текст)</label>
+            <input type="text" name="match_text" class="form-control" value="{{ match_text }}" placeholder="Название команды">
+        </div>
+        <div class="col-md-2">
+            <label>С</label>
+            <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+        </div>
+        <div class="col-md-2">
+            <label>По</label>
+            <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Применить фильтр</button>
+        </div>
+    </form>
+
+    <!-- Таблица сигналов -->
+    {% if signals %}
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Матч</th>
+                <th>Ожидаемый исход</th>
+                <th>Фактический исход</th>
+                <th>Успех</th>
+                <th>Условия</th>
+                <th>Фильтр</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in signals %}
+            <tr>
+                <td>{{ s.triggered_at }}</td>
+                <td>
+                    {% if s.match %}
+                        {{ s.match.home.name }} – {{ s.match.away.name }}
+                    {% else %}
+                        Матч ID {{ s.match_id }}
+                    {% endif %}
+                </td>
+                <td>{{ s.expected_outcome or 'не указан' }}</td>
+                <td>{{ s.actual_outcome or 'ожидается' }}</td>
+                <td>{% if s.is_success %}✅{% else %}❌{% endif %}</td>
+                <td>
+                    {% if s.conditions %}
+                        {{ s.conditions | truncate(50) }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>#{{ s.filter_id }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Пагинация -->
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% if page > 1 %}
+            <li class="page-item"><a class="page-link" href="?chat_id={{ chat_id }}&page={{ page-1 }}{% if selected_filter %}&filter_id={{ selected_filter }}{% endif %}{% if match_text %}&match_text={{ match_text }}{% endif %}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}">←</a></li>
+            {% else %}
+            <li class="page-item disabled"><a class="page-link">←</a></li>
+            {% endif %}
+
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                <li class="page-item active"><a class="page-link" href="#">{{ p }}</a></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?chat_id={{ chat_id }}&page={{ p }}{% if selected_filter %}&filter_id={{ selected_filter }}{% endif %}{% if match_text %}&match_text={{ match_text }}{% endif %}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}">{{ p }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %}
+            <li class="page-item"><a class="page-link" href="?chat_id={{ chat_id }}&page={{ page+1 }}{% if selected_filter %}&filter_id={{ selected_filter }}{% endif %}{% if match_text %}&match_text={{ match_text }}{% endif %}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}">→</a></li>
+            {% else %}
+            <li class="page-item disabled"><a class="page-link">→</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <p>Всего сигналов: {{ total }}</p>
+    {% else %}
+    <p>Нет сигналов по заданным критериям.</p>
+    {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
