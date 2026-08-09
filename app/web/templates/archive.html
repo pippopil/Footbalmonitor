@@ -11,6 +11,10 @@
     <div class="mb-3">
         <a href="/?chat_id={{ chat_id }}" class="btn btn-secondary">Назад к фильтрам</a>
         <a href="/archive?chat_id={{ chat_id }}" class="btn btn-outline-primary">Обновить</a>
+        <form method="post" action="/archive/clear" style="display:inline;" onsubmit="return confirm('Вы уверены, что хотите полностью очистить архив сигналов? Это действие необратимо!');">
+            <input type="hidden" name="chat_id" value="{{ chat_id }}">
+            <button type="submit" class="btn btn-danger">🗑️ Очистить архив</button>
+        </form>
     </div>
 
     <!-- Форма фильтрации -->
@@ -63,8 +67,8 @@
             <tr>
                 <td>{{ s.triggered_at }}</td>
                 <td>
-                    {% if s.match %}
-                        {{ s.match.home.name }} – {{ s.match.away.name }}
+                    {% if s.home_name and s.away_name %}
+                        {{ s.home_name }} – {{ s.away_name }}
                     {% else %}
                         Матч ID {{ s.match_id }}
                     {% endif %}

@@ -25,6 +25,94 @@ def clean_chat_id(raw: str) -> int:
     cleaned = raw.strip().rstrip('.')
     return int(cleaned)
 
+def extract_team_names(match_data: dict) -> tuple:
+    """
+    Извлекает названия команд из match_data, перебирая возможные ключи.
+    Возвращает (home_name, away_name).
+    """
+    home_name = 'Неизвестно'
+    away_name = 'Неизвестно'
+
+    if not match_data:
+        return home_name, away_name
+
+    # Если match_data - строка, пробуем распарсить как JSON
+    if isinstance(match_data, str):
+        try:
+            match_data = json.loads(match_data)
+        except:
+            return home_name, away_name
+
+    # Рекурсивный обход для поиска ключей 'home' и 'away' с name
+    def find_names(obj):
+        nonlocal home_name, away_name
+        if isinstance(obj, dict):
+            # Проверяем ключи на наличие названий команд
+            if 'home' in obj and isinstance(obj['home'], dict):
+                if 'name' in obj['home'] and obj['home']['name']:
+                    home_name = obj['home']['name']
+                elif 'team_name' in obj['home'] and obj['home']['team_name']:
+                    home_name = obj['home']['team_name']
+                elif 'title' in obj['home'] and obj['home']['title']:
+                    home_name = obj['home']['title']
+            if 'away' in obj and isinstance(obj['away'], dict):
+                if 'name' in obj['away'] and obj['away']['name']:
+                    away_name = obj['away']['name']
+                elif 'team_name' in obj['away'] and obj['away']['team_name']:
+                    away_name = obj['away']['team_name']
+                elif 'title' in obj['away'] and obj['away']['title']:
+                    away_name = obj['away']['title']
+
+            # Если есть 'home_team' и 'away_team' напрямую
+            if 'home_team' in obj and isinstance(obj['home_team'], str):
+                home_name = obj['home_team']
+            if 'away_team' in obj and isinstance(obj['away_team'], str):
+                away_name = obj['away_team']
+
+            # Если есть 'team1' и 'team2'
+            if 'team1' in obj and isinstance(obj['team1'], str):
+                home_name = obj['team1']
+            if 'team2' in obj and isinstance(obj['team2'], str):
+                away_name = obj['team2']
+
+            # Если есть 'homeName' и 'awayName'
+            if 'homeName' in obj and isinstance(obj['homeName'], str):
+                home_name = obj['homeName']
+            if 'awayName' in obj and isinstance(obj['awayName'], str):
+                away_name = obj['awayName']
+
+            # Рекурсивно обходим все значения
+            for value in obj.values():
+                if isinstance(value, (dict, list)):
+                    find_names(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                find_names(item)
+
+    find_names(match_data)
+
+    return home_name, away_name
+
+def prepare_signals(matches: list) -> list:
+    """Обогащает сигналы извлечёнными названиями команд."""
+    for idx, s in enumerate(matches):
+        try:
+            match_data = json.loads(s['match_data']) if s['match_data'] else {}
+        except (json.JSONDecodeError, TypeError):
+            match_data = {}
+
+        # Логируем структуру первого сигнала для отладки (можно убрать после настройки)
+        if idx == 0 and match_data:
+            logger.info(f"DEBUG: sample match_data structure: {json.dumps(match_data, ensure_ascii=False)[:500]}")
+
+        home_name, away_name = extract_team_names(match_data)
+        s['home_name'] = home_name
+        s['away_name'] = away_name
+
+    return matches
+
+# ---------- Основные маршруты ----------
+
 @router.get("/")
 async def index(request: Request):
     try:
@@ -312,7 +400,6 @@ async def filter_stats(request: Request, filter_id: int):
         logger.error(f"Error in stats: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
-# --- НОВЫЙ МАРШРУТ: Архив сигналов ---
 @router.get("/archive")
 async def archive(request: Request):
     try:
@@ -336,9 +423,7 @@ async def archive(request: Request):
         total = db.get_triggered_matches_count(user_id, filter_id, match_text, from_date, to_date)
         matches = db.get_triggered_matches(user_id, filter_id, match_text, from_date, to_date, limit, offset)
 
-        # Распарсим match_data для каждого сигнала
-        for s in matches:
-            s['match'] = json.loads(s['match_data']) if s['match_data'] else {}
+        matches = prepare_signals(matches)
 
         total_pages = (total + limit - 1) // limit if total > 0 else 1
 
@@ -359,6 +444,51 @@ async def archive(request: Request):
     except Exception as e:
         logger.error(f"Error in archive: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
+
+@router.get("/signals")
+async def signals_table(request: Request):
+    try:
+        chat_id_raw = request.query_params.get("chat_id")
+        chat_id = clean_chat_id(chat_id_raw)
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            user_id = db.create_user(chat_id)
+
+        filter_id = request.query_params.get("filter_id")
+        if filter_id:
+            filter_id = int(filter_id)
+        match_text = request.query_params.get("match_text")
+        from_date = request.query_params.get("from_date")
+        to_date = request.query_params.get("to_date")
+        page = int(request.query_params.get("page", 1))
+        limit = 20
+        offset = (page - 1) * limit
+
+        filters = db.get_user_filters_for_archive(user_id)
+        total = db.get_triggered_matches_count(user_id, filter_id, match_text, from_date, to_date)
+        matches = db.get_triggered_matches(user_id, filter_id, match_text, from_date, to_date, limit, offset)
+
+        matches = prepare_signals(matches)
+
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+        template = env.get_template("_signals_table.html")
+        html = template.render(
+            chat_id=chat_id,
+            signals=matches,
+            total=total,
+            page=page,
+            total_pages=total_pages,
+            filters=filters,
+            selected_filter=filter_id,
+            match_text=match_text or '',
+            from_date=from_date or '',
+            to_date=to_date or ''
+        )
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error in signals table: {e}", exc_info=True)
+        return HTMLResponse(f"<p class='text-danger'>Ошибка загрузки сигналов: {e}</p>", status_code=500)
 
 @router.get("/leagues")
 async def leagues_page(request: Request):
@@ -402,3 +532,16 @@ async def remove_blacklist(request: Request, chat_id: int = Form(...), league_id
     except Exception as e:
         logger.error(f"Error removing blacklist: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
+
+# --- НОВЫЙ МАРШРУТ: Очистка архива ---
+@router.post("/archive/clear")
+async def clear_archive(request: Request, chat_id: int = Form(...)):
+    try:
+        user_id = db.get_user_id(chat_id)
+        if not user_id:
+            return HTMLResponse("Пользователь не найден", status_code=404)
+        db.delete_all_triggered_matches(user_id)
+        return RedirectResponse(f"/archive?chat_id={chat_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error clearing archive: {e}", exc_info=True)
+        return HTMLResponse(f"<h1>Ошибка</h1><p>{e}</p>", status_code=500)

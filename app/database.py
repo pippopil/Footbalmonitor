@@ -435,3 +435,18 @@ def get_user_filters_for_archive(user_id: int) -> List[dict]:
     rows = c.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+# --- НОВАЯ ФУНКЦИЯ: Очистка архива ---
+def delete_all_triggered_matches(user_id: int):
+    """
+    Удаляет все срабатывания (сигналы) для указанного пользователя.
+    """
+    conn = get_db()
+    c = conn.cursor()
+    # Удаляем записи из triggered_matches, принадлежащие фильтрам пользователя
+    c.execute(
+        "DELETE FROM triggered_matches WHERE filter_id IN (SELECT id FROM filters WHERE user_id=?)",
+        (user_id,)
+    )
+    conn.commit()
+    conn.close()
