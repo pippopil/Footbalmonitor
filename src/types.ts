@@ -32,6 +32,8 @@ export interface Match {
   };
 }
 
+export type LiveMatch = Match;
+
 export type ScoreCondition =
   | 'ANY'
   | 'DRAW'
@@ -192,4 +194,34 @@ export interface BacktestResult {
     matchName: string;
     outcome: SignalOutcome;
   }>;
+}
+
+export interface AIMatchAnalysis {
+  matchId: string;
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  momentum: {
+    dominantSide: 'home' | 'away' | 'balanced';
+    dominantTeam: string;
+    pressureDescription: string;
+    intensityLevel: 'CALM' | 'ACTIVE' | 'HIGH_PRESSURE' | 'SIEGE';
+  };
+  probabilities: {
+    nextGoalHome: number;
+    nextGoalAway: number;
+    noMoreGoals: number;
+    expectedTotalGoals: string;
+  };
+  recommendations: Array<{
+    market: string;
+    oddsEstimate: number;
+    confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+    reasoning: string;
+    edge: string;
+  }>;
+  keyRisks: string[];
+  tacticalNote: string;
+  telegramFormattedText: string;
+  source: 'gemini' | 'heuristic';
 }

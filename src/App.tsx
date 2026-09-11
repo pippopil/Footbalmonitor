@@ -65,6 +65,7 @@ import {
 } from './algorithms';
 import { FilterBuilderModal } from './components/FilterBuilderModal';
 import { BacktestingView } from './components/BacktestingView';
+import { AIAnalystModal } from './components/AIAnalystModal';
 import { getEstimatedOdds } from './backtestEngine';
 
 const INITIAL_SIGNALS: SignalAlert[] = [
@@ -368,6 +369,15 @@ export default function App() {
   // Signal tracker UI filters
   const [signalOutcomeFilter, setSignalOutcomeFilter] = useState<'ALL' | 'WIN' | 'LOSS' | 'PENDING' | 'REFUND'>('ALL');
   const [signalSearchQuery, setSignalSearchQuery] = useState<string>('');
+
+  // AI Match Analyst modal state
+  const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
+  const [aiTargetMatch, setAiTargetMatch] = useState<Match | null>(null);
+
+  const handleOpenAIAnalyst = (targetMatch: Match) => {
+    setAiTargetMatch(targetMatch);
+    setIsAIModalOpen(true);
+  };
 
   // Update signal outcome (WIN, LOSS, REFUND, PENDING)
   const updateSignalOutcome = (signalId: string, outcome: SignalOutcome, oddsOverride?: number) => {
@@ -890,6 +900,16 @@ export default function App() {
             Тест в Telegram
           </button>
 
+          <button
+            id="open-ai-analyst-header-btn"
+            onClick={() => handleOpenAIAnalyst(selectedMatch || matches[0])}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-950/50 border border-indigo-400/30 transition hover:scale-[1.02] active:scale-[0.98]"
+            title="Запустить мгновенный AI-анализ матча"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-indigo-200 animate-pulse" />
+            AI-Аналитик
+          </button>
+
           <div className="h-4 w-px bg-slate-800" />
 
           {/* Navigation tabs */}
@@ -1022,7 +1042,18 @@ export default function App() {
                           <span className="text-slate-600">•</span>
                           <span className="text-slate-300">{match.league}</span>
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenAIAnalyst(match);
+                            }}
+                            className="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold flex items-center gap-1 transition"
+                            title="Открыть AI-анализ матча в один клик"
+                          >
+                            <Sparkles className="h-2.5 w-2.5 text-indigo-400" />
+                            AI
+                          </button>
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold text-[11px] border border-emerald-500/20">
                             {match.minute}'
                           </span>
@@ -1124,12 +1155,24 @@ export default function App() {
                       </h2>
                     </div>
 
-                    <div className="text-right">
-                      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                        {selectedMatch.minute} МИНУТА
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          id="match-inspector-ai-btn"
+                          onClick={() => handleOpenAIAnalyst(selectedMatch)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-950/60 border border-indigo-400/30 transition hover:scale-[1.02] active:scale-[0.98]"
+                          title="Запустить глубокий AI-анализ матча и расчет вероятностей"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-indigo-200 animate-pulse" />
+                          <span>AI-Аналитик в 1 клик</span>
+                        </button>
+
+                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          {selectedMatch.minute} МИНУТА
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-1">Синхронизация: {selectedMatch.source} API</div>
+                      <div className="text-[11px] text-slate-400">Синхронизация: {selectedMatch.source} API</div>
                     </div>
                   </div>
 
@@ -2018,6 +2061,17 @@ export default function App() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const foundMatch = matches.find((m) => m.id === sig.matchId || sig.matchName.includes(m.homeTeam)) || matches[0];
+                              handleOpenAIAnalyst(foundMatch);
+                            }}
+                            className="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold flex items-center gap-1 transition"
+                            title="Открыть AI-анализ этого матча в один клик"
+                          >
+                            <Sparkles className="h-3 w-3 text-indigo-400" />
+                            AI-Разбор
+                          </button>
                           <span
                             className={`text-xs px-2.5 py-0.5 rounded flex items-center gap-1.5 font-medium border ${
                               sig.sentToTelegram
@@ -2619,6 +2673,32 @@ export default function App() {
             handleSaveFilter(savedRule);
             setIsFilterModalOpen(false);
             setEditingFilter(null);
+          }}
+        />
+
+        {/* AI Match Analyst in 1 Click Modal */}
+        <AIAnalystModal
+          isOpen={isAIModalOpen}
+          match={aiTargetMatch || selectedMatch}
+          pressureAnalysis={
+            aiTargetMatch
+              ? calculatePressureAnalysis(aiTargetMatch)
+              : selectedMatch
+              ? calculatePressureAnalysis(selectedMatch)
+              : undefined
+          }
+          telegramConfig={telegramConfig}
+          onClose={() => {
+            setIsAIModalOpen(false);
+            setAiTargetMatch(null);
+          }}
+          onSendTelegramMessage={async (textHtml) => {
+            const res = await sendTelegramMessage(textHtml, false);
+            return {
+              ok: res.ok,
+              messageId: res.messageId,
+              error: res.error,
+            };
           }}
         />
       </div>
