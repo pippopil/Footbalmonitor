@@ -55,6 +55,68 @@ async function startServer() {
     }
   });
 
+  function humanizeTelegramError(rawError: string): string {
+    if (rawError.includes("the bot can't send messages to the bot")) {
+      return "В поле 'Chat ID' указан юзернейм или ID самого бота. Бот не может отправлять сообщения самому себе. Укажите ID вашего личного диалога или имя вашего канала/группы (например, @my_channel_name).";
+    }
+    if (rawError.includes("chat not found")) {
+      return "Чат или канал не найден. Убедитесь, что бот добавлен в канал/группу и назначен администратором, либо напишите боту в личные сообщения команду /start.";
+    }
+    if (rawError.includes("bot was blocked by the user")) {
+      return "Бот заблокирован пользователем. Откройте диалог с ботом в Telegram и нажмите 'Запустить' (Start).";
+    }
+    if (rawError.includes("bot is not a member") || rawError.includes("have no rights to send a message") || rawError.includes("not enough rights")) {
+      return "У бота нет прав на публикацию в этом канале/чате. Добавьте бота в администраторы канала с разрешением отправки сообщений.";
+    }
+    return rawError;
+  }
+
+  // Get recent chats / updates from bot to auto-detect User/Channel ID
+  app.get('/api/telegram/updates', async (req, res) => {
+    const queryToken = req.query.token as string | undefined;
+    const token = queryToken || process.env.TELEGRAM_BOT_TOKEN;
+
+    if (!token) {
+      return res.status(400).json({ ok: false, error: 'Токен Telegram бота не настроен' });
+    }
+
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=20`);
+      const data = await response.json() as { ok: boolean; result?: any[]; description?: string };
+
+      if (!data.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: humanizeTelegramError(data.description || 'Не удалось получить обновления бота'),
+        });
+      }
+
+      const chats: Array<{ id: number | string; title: string; type: string; username?: string }> = [];
+      const seen = new Set<string>();
+
+      for (const update of (data.result || []).reverse()) {
+        const chat = update.message?.chat || update.channel_post?.chat || update.my_chat_member?.chat;
+        if (chat && !seen.has(String(chat.id))) {
+          seen.add(String(chat.id));
+          const name = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ') || chat.username || `Чат ${chat.id}`;
+          chats.push({
+            id: chat.id,
+            title: name,
+            type: chat.type,
+            username: chat.username,
+          });
+        }
+      }
+
+      return res.json({ ok: true, chats });
+    } catch (err: any) {
+      return res.status(500).json({
+        ok: false,
+        error: `Ошибка при запросе к Telegram: ${err?.message || err}`,
+      });
+    }
+  });
+
   // Send message to Telegram chat / channel
   app.post('/api/telegram/send', async (req, res) => {
     const {
@@ -114,9 +176,11 @@ async function startServer() {
           chat: result.result?.chat,
         });
       } else {
+        const errorText = humanizeTelegramError(result.description || 'Ошибка API Telegram');
         return res.status(400).json({
           ok: false,
-          error: result.description || 'Ошибка API Telegram',
+          error: errorText,
+          rawError: result.description,
         });
       }
     } catch (err: any) {

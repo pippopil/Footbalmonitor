@@ -33,7 +33,10 @@ import {
   VolumeX,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  User,
+  MessageSquare,
+  Sparkles
 } from 'lucide-react';
 
 interface MatchStats {
@@ -310,6 +313,55 @@ export default function App() {
   const [telegramError, setTelegramError] = useState<string | null>(null);
   const [showToken, setShowToken] = useState<boolean>(false);
   const [lastSentResult, setLastSentResult] = useState<{ ok: boolean; messageId?: number; text?: string; time?: string } | null>(null);
+
+  // Auto-detect chat state
+  const [isDetectingChat, setIsDetectingChat] = useState<boolean>(false);
+  const [detectedChats, setDetectedChats] = useState<Array<{ id: number | string; title: string; type: string; username?: string }>>([]);
+  const [showChatPicker, setShowChatPicker] = useState<boolean>(false);
+
+  // Check if user accidentally entered bot's own username / ID
+  const isEnteringBotItself = useMemo(() => {
+    if (!telegramBotInfo?.username && !telegramBotInfo?.id) return false;
+    const cleanInput = telegramConfig.channelId.trim().replace(/^@/, '').toLowerCase();
+    const botUser = (telegramBotInfo?.username || '').toLowerCase();
+    const botId = String(telegramBotInfo?.id || '');
+    return cleanInput.length > 0 && (cleanInput === botUser || cleanInput === botId);
+  }, [telegramConfig.channelId, telegramBotInfo]);
+
+  // Query bot updates to discover user chat ID or channel ID
+  const detectChatId = async () => {
+    if (!telegramConfig.botToken.trim()) {
+      setTelegramError('Сначала введите Bot Token и проверьте статус бота.');
+      return;
+    }
+    setIsDetectingChat(true);
+    setTelegramError(null);
+    try {
+      const res = await fetch(`/api/telegram/updates?token=${encodeURIComponent(telegramConfig.botToken.trim())}`);
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (data.chats && data.chats.length > 0) {
+          setDetectedChats(data.chats);
+          setShowChatPicker(true);
+          // If only 1 chat found, automatically set it
+          if (data.chats.length === 1) {
+            const firstChat = data.chats[0];
+            setTelegramConfig((c: typeof telegramConfig) => ({ ...c, channelId: String(firstChat.id) }));
+          }
+        } else {
+          setTelegramError(
+            `Бот пока не получил ни одного сообщения. Откройте диалог с @${telegramBotInfo?.username || 'вашим ботом'} в Telegram, нажмите кнопку «Запустить» (/start) или отправьте любое сообщение, затем нажмите «Определить мой Chat ID» ещё раз.`
+          );
+        }
+      } else {
+        setTelegramError(data.error || 'Не удалось получить список чатов бота');
+      }
+    } catch (e: any) {
+      setTelegramError(`Сетевая ошибка при поиске чатов: ${e?.message || e}`);
+    } finally {
+      setIsDetectingChat(false);
+    }
+  };
 
   // Save to localStorage
   useEffect(() => {
@@ -1253,17 +1305,111 @@ export default function App() {
 
                     {/* Chat ID Input */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                        <Hash className="h-3.5 w-3.5 text-slate-400" />
-                        Chat ID или Юзернейм канала
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Пример: @my_channel_name или -1001234567890"
-                        value={telegramConfig.channelId}
-                        onChange={(e) => setTelegramConfig({ ...telegramConfig, channelId: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 font-mono focus:border-sky-500 focus:outline-none placeholder:text-slate-600"
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                          <Hash className="h-3.5 w-3.5 text-slate-400" />
+                          Chat ID или Юзернейм канала
+                        </label>
+                        <button
+                          type="button"
+                          onClick={detectChatId}
+                          disabled={isDetectingChat || !telegramConfig.botToken.trim()}
+                          className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium disabled:opacity-40 transition"
+                          title="Определить ID чата по входящим сообщениям боту"
+                        >
+                          <Sparkles className={`h-3 w-3 ${isDetectingChat ? 'animate-spin' : ''}`} />
+                          {isDetectingChat ? 'Поиск сообщений...' : 'Определить мой Chat ID'}
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Личный ID (12345678) или канал (@channel_name)"
+                          value={telegramConfig.channelId}
+                          onChange={(e) => setTelegramConfig({ ...telegramConfig, channelId: e.target.value })}
+                          className={`w-full bg-slate-950 border rounded-lg p-3 text-xs text-slate-200 font-mono focus:outline-none placeholder:text-slate-600 ${
+                            isEnteringBotItself
+                              ? 'border-amber-500 focus:border-amber-400'
+                              : 'border-slate-800 focus:border-sky-500'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Warning if user entered bot's own username */}
+                      {isEnteringBotItself && (
+                        <div className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs space-y-1.5">
+                          <div className="font-bold flex items-center gap-1.5 text-amber-200">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                            Ошибка: Указан юзернейм самого бота (@{telegramBotInfo?.username})
+                          </div>
+                          <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                            Telegram API запрещает ботам отправлять сообщения самим себе (ошибка <i>«the bot can't send messages to the bot»</i>).
+                          </p>
+                          <div className="text-[11px] text-amber-200 pt-1 border-t border-amber-500/20">
+                            <strong>Как исправить:</strong>
+                            <div className="mt-1 space-y-1 text-amber-300/90">
+                              <div>• <b>В личные сообщения:</b> напишите боту в Telegram <code className="bg-amber-950/80 px-1 py-0.5 rounded text-amber-200 font-mono">/start</code> и нажмите синюю кнопку <b>«Определить мой Chat ID»</b> выше.</div>
+                              <div>• <b>В Telegram-канал:</b> укажите юзернейм канала (например <code className="bg-amber-950/80 px-1 py-0.5 rounded text-amber-200 font-mono">@my_channel</code>), сделав бота администратором с правом публикации.</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Detected Chats List */}
+                      {showChatPicker && detectedChats.length > 0 && (
+                        <div className="p-3 rounded-lg bg-slate-950 border border-sky-500/30 text-xs space-y-2 mt-2 shadow-lg">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300 font-semibold border-b border-slate-800 pb-1.5">
+                            <span className="flex items-center gap-1.5 text-sky-400">
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              Найденные чаты (нажмите, чтобы подставить):
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowChatPicker(false)}
+                              className="text-slate-500 hover:text-slate-300 text-[10px]"
+                            >
+                              Закрыть ✕
+                            </button>
+                          </div>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {detectedChats.map((c) => (
+                              <div
+                                key={c.id}
+                                onClick={() => {
+                                  setTelegramConfig({ ...telegramConfig, channelId: String(c.id) });
+                                  setShowChatPicker(false);
+                                  setTelegramError(null);
+                                }}
+                                className={`p-2.5 rounded-lg border cursor-pointer flex items-center justify-between transition ${
+                                  String(telegramConfig.channelId) === String(c.id)
+                                    ? 'bg-sky-500/20 border-sky-500 text-white'
+                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {c.type === 'private' ? (
+                                    <div className="p-1 rounded bg-emerald-500/20 text-emerald-400">
+                                      <User className="h-3.5 w-3.5" />
+                                    </div>
+                                  ) : (
+                                    <div className="p-1 rounded bg-sky-500/20 text-sky-400">
+                                      <Hash className="h-3.5 w-3.5" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="font-semibold text-white text-xs">{c.title}</div>
+                                    <div className="text-[10px] text-slate-400">
+                                      {c.type === 'private' ? 'Личный диалог' : c.type} {c.username ? `@${c.username}` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="font-mono text-xs font-semibold text-sky-300">ID: {c.id}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Toggles */}
@@ -1382,26 +1528,31 @@ export default function App() {
                 <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-5 space-y-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Инструкция по подключению Telegram
+                    Куда бот может отправлять сигналы?
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-300">
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-                      <div className="font-bold text-sky-400">1. Создайте бота</div>
-                      <p className="text-[11px] text-slate-400">
-                        Откройте <strong className="text-slate-200">@BotFather</strong>, напишите <code className="text-sky-300 font-mono">/newbot</code> и скопируйте HTTP API токен.
-                      </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
+                    <div className="bg-slate-950 p-3.5 rounded-lg border border-slate-800 space-y-1.5">
+                      <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5" />
+                        Вариант 1: В ваши личные сообщения
+                      </div>
+                      <ol className="text-[11px] text-slate-400 space-y-1 list-decimal list-inside leading-relaxed">
+                        <li>Откройте бота в Telegram: {telegramBotInfo?.username ? <strong className="text-white">@{telegramBotInfo.username}</strong> : 'по его юзернейму'}.</li>
+                        <li>Нажмите кнопку <b>«Запустить» (/start)</b> или отправьте приветствие.</li>
+                        <li>В этом приложении нажмите кнопку <span className="text-sky-300 font-semibold">«Определить мой Chat ID»</span> — ваш личный ID подставится сам!</li>
+                      </ol>
                     </div>
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-                      <div className="font-bold text-sky-400">2. Добавьте в канал</div>
-                      <p className="text-[11px] text-slate-400">
-                        Добавьте созданного бота в администраторы вашего канала или группы с правом публикации.
-                      </p>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-                      <div className="font-bold text-sky-400">3. Укажите Chat ID</div>
-                      <p className="text-[11px] text-slate-400">
-                        Для публичного канала введите <code className="text-sky-300 font-mono">@имя_канала</code>, для приватного — числовой ID.
-                      </p>
+
+                    <div className="bg-slate-950 p-3.5 rounded-lg border border-slate-800 space-y-1.5">
+                      <div className="font-bold text-sky-400 flex items-center gap-1.5">
+                        <Hash className="h-3.5 w-3.5" />
+                        Вариант 2: В Telegram-канал или группу
+                      </div>
+                      <ol className="text-[11px] text-slate-400 space-y-1 list-decimal list-inside leading-relaxed">
+                        <li>Зайдите в настройки вашего канала или группы.</li>
+                        <li>Добавьте бота в <b>Администраторы</b> с правом публикации сообщений.</li>
+                        <li>В поле Chat ID укажите <code className="text-sky-300 font-mono">@имя_канала</code> (для открытого) или ID (например <code className="text-sky-300 font-mono">-100...</code>).</li>
+                      </ol>
                     </div>
                   </div>
                 </div>
