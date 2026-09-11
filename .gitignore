@@ -10,6 +10,7 @@ bun.lock
 # Build outputs
 dist/
 build/
+.vite/
 
 # Python artifacts
 venv/
