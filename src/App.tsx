@@ -36,74 +36,32 @@ import {
   ExternalLink,
   User,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Copy,
+  Download,
+  Upload,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 
-interface MatchStats {
-  possession: [number, number];
-  dangerousAttacks: [number, number];
-  attacks: [number, number];
-  shotsOnTarget: [number, number];
-  shotsOffTarget: [number, number];
-  corners: [number, number];
-  yellowCards: [number, number];
-  redCards: [number, number];
-  xg: [number, number];
-}
-
-interface Match {
-  id: string;
-  country: string;
-  countryCode: string;
-  league: string;
-  homeTeam: string;
-  awayTeam: string;
-  score: [number, number];
-  minute: number;
-  status: 'LIVE' | 'HT' | 'FINISHED';
-  stats: MatchStats;
-  momentum: number[]; // -100 to 100
-  lastEvent?: string;
-  source: 'Flashscore' | 'SStats' | 'Sofascore';
-  odds: {
-    home: number;
-    draw: number;
-    away: number;
-    over25: number;
-  };
-}
-
-interface FilterRule {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  minMinute: number;
-  maxMinute: number;
-  minDangerousAttacksDiff?: number;
-  minTotalShots?: number;
-  minTotalCorners?: number;
-  scoreCondition: 'ANY' | 'DRAW' | '0-0' | 'HOME_LEAD' | 'AWAY_LEAD';
-  minXgTotal?: number;
-  telegramEnabled: boolean;
-  color: string;
-}
-
-interface SignalAlert {
-  id: string;
-  timestamp: string;
-  matchId: string;
-  matchName: string;
-  league: string;
-  country: string;
-  minute: number;
-  score: string;
-  ruleName: string;
-  message: string;
-  sentToTelegram: boolean;
-  telegramStatusText?: string;
-  telegramMessageId?: number;
-}
+import {
+  Match,
+  MatchStats,
+  FilterRule,
+  SignalAlert,
+  TelegramConfig,
+  FilterCategory,
+  ScoreCondition,
+  PressureAnalysis,
+} from './types';
+import { EXPANDED_DEFAULT_FILTERS } from './data/defaultFilters';
+import {
+  calculatePressureAnalysis,
+  evaluateFilterRule,
+  formatExtendedTelegramAlert,
+} from './algorithms';
+import { FilterBuilderModal } from './components/FilterBuilderModal';
 
 const INITIAL_MATCHES: Match[] = [
   {
@@ -238,51 +196,36 @@ const INITIAL_MATCHES: Match[] = [
   },
 ];
 
-const DEFAULT_FILTERS: FilterRule[] = [
-  {
-    id: 'f-1',
-    name: '🔥 Доминирование при ничьей 0:0 (60-80 мин)',
-    description: 'Команда давит с опасными атаками >50 при счете 0:0 во втором тайме',
-    enabled: true,
-    minMinute: 60,
-    maxMinute: 85,
-    minDangerousAttacksDiff: 30,
-    minTotalShots: 8,
-    scoreCondition: '0-0',
-    minXgTotal: 1.5,
-    telegramEnabled: true,
-    color: 'emerald',
-  },
-  {
-    id: 'f-2',
-    name: '⚡ Высокий прессинг и угловые (70+ мин)',
-    description: 'Высокая интенсивность угловых и опасных атак в концовке',
-    enabled: true,
-    minMinute: 70,
-    maxMinute: 90,
-    minTotalCorners: 8,
-    minTotalShots: 12,
-    scoreCondition: 'ANY',
-    telegramEnabled: true,
-    color: 'blue',
-  },
-  {
-    id: 'f-3',
-    name: '🎯 Фаворит отыгрывается (1 мяч отставания)',
-    description: 'Команда хозяев проигрывает в 1 мяч при мощном перевесе по атакам',
-    enabled: true,
-    minMinute: 55,
-    maxMinute: 88,
-    minDangerousAttacksDiff: 25,
-    scoreCondition: 'AWAY_LEAD',
-    telegramEnabled: true,
-    color: 'amber',
-  },
-];
-
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
-  const [filters, setFilters] = useState<FilterRule[]>(DEFAULT_FILTERS);
+  
+  // Persistent filters loaded from localStorage or expanded default presets
+  const [filters, setFilters] = useState<FilterRule[]>(() => {
+    const saved = localStorage.getItem('footbalmonitor_filters');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    return EXPANDED_DEFAULT_FILTERS;
+  });
+
+  // Filter manager UI state
+  const [activeFilterCategory, setActiveFilterCategory] = useState<FilterCategory>('all');
+  const [filterSearchQuery, setFilterSearchQuery] = useState<string>('');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState<boolean>(false);
+  const [editingFilter, setEditingFilter] = useState<FilterRule | null>(null);
+
+  // Save filters to localStorage whenever modified
+  useEffect(() => {
+    localStorage.setItem('footbalmonitor_filters', JSON.stringify(filters));
+  }, [filters]);
+
   const [selectedMatchId, setSelectedMatchId] = useState<string>(INITIAL_MATCHES[0].id);
   const [isMonitoringActive, setIsMonitoringActive] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'matches' | 'filters' | 'telegram' | 'signals'>('matches');
@@ -538,35 +481,11 @@ export default function App() {
   // Check filter triggers and auto-send alerts
   useEffect(() => {
     matches.forEach((match) => {
+      const analysis = calculatePressureAnalysis(match);
+
       filters.filter((f) => f.enabled).forEach((rule) => {
-        const inMinuteRange = match.minute >= rule.minMinute && match.minute <= rule.maxMinute;
-        if (!inMinuteRange) return;
-
-        let scoreMatch = true;
-        if (rule.scoreCondition === '0-0') {
-          scoreMatch = match.score[0] === 0 && match.score[1] === 0;
-        } else if (rule.scoreCondition === 'DRAW') {
-          scoreMatch = match.score[0] === match.score[1];
-        } else if (rule.scoreCondition === 'AWAY_LEAD') {
-          scoreMatch = match.score[1] > match.score[0];
-        } else if (rule.scoreCondition === 'HOME_LEAD') {
-          scoreMatch = match.score[0] > match.score[1];
-        }
-
-        if (!scoreMatch) return;
-
-        const dangDiff = Math.abs(match.stats.dangerousAttacks[0] - match.stats.dangerousAttacks[1]);
-        if (rule.minDangerousAttacksDiff && dangDiff < rule.minDangerousAttacksDiff) return;
-
-        const totalShots =
-          match.stats.shotsOnTarget[0] +
-          match.stats.shotsOnTarget[1] +
-          match.stats.shotsOffTarget[0] +
-          match.stats.shotsOffTarget[1];
-        if (rule.minTotalShots && totalShots < rule.minTotalShots) return;
-
-        const totalCorners = match.stats.corners[0] + match.stats.corners[1];
-        if (rule.minTotalCorners && totalCorners < rule.minTotalCorners) return;
+        const evalResult = evaluateFilterRule(match, rule);
+        if (!evalResult.matches) return;
 
         // Found match! Let's check if alert already recorded for this minute
         const alertId = `${match.id}-${rule.id}-${match.minute}`;
@@ -584,13 +503,16 @@ export default function App() {
             minute: match.minute,
             score: `${match.score[0]}:${match.score[1]}`,
             ruleName: rule.name,
-            message: `⚽ [СИГНАЛ] ${match.country} | ${match.league}\n${match.homeTeam} ${match.score[0]}:${match.score[1]} ${match.awayTeam} (${match.minute}')\n🔥 Давление: Оп. атаки ${match.stats.dangerousAttacks[0]}-${match.stats.dangerousAttacks[1]} | Удары в створ ${match.stats.shotsOnTarget[0]}-${match.stats.shotsOnTarget[1]} | Углы ${match.stats.corners[0]}-${match.stats.corners[1]}`,
+            marketSuggestion: rule.targetMarket,
+            message: `⚽ [СИГНАЛ] ${match.country} | ${match.league}\n${match.homeTeam} ${match.score[0]}:${match.score[1]} ${match.awayTeam} (${match.minute}')\n` +
+              (rule.targetMarket ? `🎯 Исход: ${rule.targetMarket}\n` : '') +
+              `🔥 Давление: ${analysis.pressureIndex}/100 | Оп. атаки ${match.stats.dangerousAttacks[0]}-${match.stats.dangerousAttacks[1]} | Удары в створ ${match.stats.shotsOnTarget[0]}-${match.stats.shotsOnTarget[1]} | Углы ${match.stats.corners[0]}-${match.stats.corners[1]}`,
             sentToTelegram: shouldSendTg,
             telegramStatusText: shouldSendTg ? 'Отправка в Telegram...' : 'Локальный сигнал',
           };
 
           if (shouldSendTg) {
-            sendTelegramMessage(formatTelegramAlert(match, rule.name)).then((res) => {
+            sendTelegramMessage(formatExtendedTelegramAlert(match, rule, analysis)).then((res) => {
               setSignals((curr) =>
                 curr.map((item) =>
                   item.id === alertId
@@ -626,11 +548,75 @@ export default function App() {
     );
   }, [matches, searchQuery]);
 
+  // Filter manager operations
+  const handleSaveFilter = (savedRule: FilterRule) => {
+    setFilters((prev) => {
+      const exists = prev.some((f) => f.id === savedRule.id);
+      if (exists) {
+        return prev.map((f) => (f.id === savedRule.id ? savedRule : f));
+      }
+      return [savedRule, ...prev];
+    });
+  };
+
+  const handleDeleteFilter = (id: string) => {
+    setFilters((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleDuplicateFilter = (rule: FilterRule) => {
+    const copy: FilterRule = {
+      ...rule,
+      id: `copy-${Date.now()}`,
+      name: `${rule.name} (копия)`,
+      isPreset: false,
+    };
+    setFilters((prev) => [copy, ...prev]);
+  };
+
+  const handleResetFilters = () => {
+    if (window.confirm('Сбросить все фильтры к расширенным заводским алгоритмам? Все пользовательские изменения будут сброшены.')) {
+      setFilters(EXPANDED_DEFAULT_FILTERS);
+    }
+  };
+
+  const handleExportFiltersJson = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filters, null, 2));
+    const a = document.createElement('a');
+    a.setAttribute('href', dataStr);
+    a.setAttribute('download', `footbalmonitor_filters_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const handleImportFiltersJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setFilters(parsed);
+        } else {
+          alert('Файл должен содержать массив правил фильтрации');
+        }
+      } catch (err: any) {
+        alert('Ошибка при импорте JSON: ' + (err?.message || err));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const triggerTestSignal = async () => {
     if (!selectedMatch) return;
     const alertId = `manual-${Date.now()}`;
-    const textHtml = formatTelegramAlert(selectedMatch, 'Ручной тестовый пуш');
-    const displayMsg = `🔔 [ТЕСТОВЫЙ ПУШ]\n${selectedMatch.countryCode} ${selectedMatch.country} | ${selectedMatch.league}\n${selectedMatch.homeTeam} ${selectedMatch.score[0]}:${selectedMatch.score[1]} ${selectedMatch.awayTeam} (${selectedMatch.minute}')\nОпасные атаки: ${selectedMatch.stats.dangerousAttacks[0]}-${selectedMatch.stats.dangerousAttacks[1]} | Удары: ${selectedMatch.stats.shotsOnTarget[0]}-${selectedMatch.stats.shotsOnTarget[1]}`;
+    const analysis = calculatePressureAnalysis(selectedMatch);
+    const activeRule = filters.find((f) => f.enabled) || filters[0];
+    const textHtml = formatExtendedTelegramAlert(selectedMatch, activeRule, analysis);
+    const displayMsg = `🔔 [ТЕСТОВЫЙ ПУШ]\n${selectedMatch.countryCode} ${selectedMatch.country} | ${selectedMatch.league}\n${selectedMatch.homeTeam} ${selectedMatch.score[0]}:${selectedMatch.score[1]} ${selectedMatch.awayTeam} (${selectedMatch.minute}')\n` +
+      `🔥 Давление: ${analysis.pressureIndex}/100 | Опасные атаки: ${selectedMatch.stats.dangerousAttacks[0]}-${selectedMatch.stats.dangerousAttacks[1]} | Удары в створ: ${selectedMatch.stats.shotsOnTarget[0]}-${selectedMatch.stats.shotsOnTarget[1]}`;
 
     const res = await sendTelegramMessage(textHtml, true);
 
@@ -643,7 +629,8 @@ export default function App() {
       country: selectedMatch.country,
       minute: selectedMatch.minute,
       score: `${selectedMatch.score[0]}:${selectedMatch.score[1]}`,
-      ruleName: 'Ручной тестовый пуш (Telegram)',
+      ruleName: `Тестовый сигнал (${activeRule?.name || 'Ручной'})`,
+      marketSuggestion: activeRule?.targetMarket,
       message: displayMsg,
       sentToTelegram: res.ok,
       telegramStatusText: res.ok ? `Доставлено в TG (#${res.messageId})` : (res.error || 'Ошибка отправки'),
@@ -796,6 +783,8 @@ export default function App() {
                   const isSelected = match.id === selectedMatchId;
                   const dangDiff = match.stats.dangerousAttacks[0] - match.stats.dangerousAttacks[1];
                   const isHighPressure = Math.abs(dangDiff) >= 25;
+                  const analysis = calculatePressureAnalysis(match);
+                  const matchingRules = filters.filter((f) => f.enabled && evaluateFilterRule(match, f).matches);
 
                   return (
                     <div
@@ -835,22 +824,35 @@ export default function App() {
                         </div>
 
                         {/* Pressure badge */}
-                        {isHighPressure && (
-                          <div className="pl-3 border-l border-slate-800 flex flex-col items-center justify-center">
-                            <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                              <Flame className="h-4 w-4 animate-bounce" />
-                            </span>
-                            <span className="text-[10px] text-amber-400 mt-1 font-mono font-bold">
-                              +{Math.abs(dangDiff)} ОА
-                            </span>
-                          </div>
-                        )}
+                        <div className="pl-3 border-l border-slate-800 flex flex-col items-center justify-center min-w-[65px]">
+                          <span
+                            className={`p-1.5 rounded-lg border text-xs font-bold font-mono flex items-center gap-1 ${
+                              analysis.pressureIndex >= 75
+                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 animate-pulse'
+                                : analysis.pressureIndex >= 50
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            <Flame className="h-3.5 w-3.5" />
+                            {analysis.pressureIndex}%
+                          </span>
+                          <span className="text-[9px] text-slate-400 mt-1 font-medium text-center">
+                            {analysis.goalProbability === 'EXTREME'
+                              ? 'Гол назревает'
+                              : analysis.goalProbability === 'HIGH'
+                              ? 'Высокое давл.'
+                              : analysis.goalProbability === 'MEDIUM'
+                              ? 'Средний темп'
+                              : 'Спокойно'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Quick stat bar */}
                       <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
                         <span className="flex items-center gap-1">
-                          Опасные атаки: <strong className="text-slate-200">{match.stats.dangerousAttacks[0]} - {match.stats.dangerousAttacks[1]}</strong>
+                          Оп. атаки: <strong className="text-slate-200">{match.stats.dangerousAttacks[0]} - {match.stats.dangerousAttacks[1]}</strong>
                         </span>
                         <span className="flex items-center gap-1">
                           Удары: <strong className="text-slate-200">{match.stats.shotsOnTarget[0] + match.stats.shotsOffTarget[0]} - {match.stats.shotsOnTarget[1] + match.stats.shotsOffTarget[1]}</strong>
@@ -859,6 +861,26 @@ export default function App() {
                           Углы: <strong className="text-slate-200">{match.stats.corners[0]} - {match.stats.corners[1]}</strong>
                         </span>
                       </div>
+
+                      {/* Matching Filters badges on card */}
+                      {matchingRules.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-wrap gap-1.5 items-center">
+                          <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            Сработали ({matchingRules.length}):
+                          </span>
+                          {matchingRules.map((rule) => (
+                            <span
+                              key={rule.id}
+                              className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold flex items-center gap-1"
+                              title={rule.name}
+                            >
+                              {rule.name.split('(')[0].trim()}
+                              {rule.targetMarket && <span className="text-emerald-400/80 font-mono font-normal">[{rule.targetMarket}]</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -904,6 +926,116 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+                  {/* Algorithmic Pressure & Filter Intelligence Inspector */}
+                  {(() => {
+                    const analysis = calculatePressureAnalysis(selectedMatch);
+                    const matchingRules = filters.filter((f) => f.enabled && evaluateFilterRule(selectedMatch, f).matches);
+                    const evaluatedRules = filters.filter((f) => f.enabled).map((rule) => ({
+                      rule,
+                      result: evaluateFilterRule(selectedMatch, rule),
+                    }));
+
+                    return (
+                      <div className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-4 space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs uppercase tracking-wider text-slate-300 font-bold flex items-center gap-2">
+                            <Cpu className="h-4 w-4 text-emerald-400" />
+                            Алгоритмический анализ давления и вероятность гола
+                          </h3>
+                          <span
+                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                              analysis.goalProbability === 'EXTREME'
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                : analysis.goalProbability === 'HIGH'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : analysis.goalProbability === 'MEDIUM'
+                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            Вероятность гола: {analysis.goalProbability} ({analysis.pressureIndex}/100)
+                          </span>
+                        </div>
+
+                        {/* Pressure progress bar */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-xs font-mono">
+                            <span className="text-slate-400">Индекс штурма (Pressure Index)</span>
+                            <span className="font-bold text-white">{analysis.pressureIndex}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              style={{ width: `${analysis.pressureIndex}%` }}
+                              className={`h-full transition-all duration-500 ${
+                                analysis.pressureIndex >= 75
+                                  ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                                  : analysis.pressureIndex >= 50
+                                  ? 'bg-gradient-to-r from-emerald-500 to-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Reasons grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          {analysis.reasons.map((reason, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-slate-300 bg-slate-900/60 p-2 rounded-lg border border-slate-800/60">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              <span className="text-[11px]">{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Evaluated Rules Matrix */}
+                        <div className="pt-2 border-t border-slate-800/80">
+                          <div className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center justify-between">
+                            <span>Проверка совпадения фильтров для этого матча:</span>
+                            <span className="text-emerald-400">{matchingRules.length} из {filters.filter((f) => f.enabled).length} сработало</span>
+                          </div>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {evaluatedRules.map(({ rule, result }) => (
+                              <div
+                                key={rule.id}
+                                className={`p-2 rounded-lg border flex items-center justify-between text-xs transition ${
+                                  result.matches
+                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                                    : 'bg-slate-900/40 border-slate-800 text-slate-400'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {result.matches ? (
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                                  ) : (
+                                    <div className="h-4 w-4 rounded-full border border-slate-700 shrink-0 flex items-center justify-center text-[9px] text-slate-600">
+                                      ✕
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="font-semibold text-white text-[12px]">{rule.name}</div>
+                                    {rule.targetMarket && (
+                                      <div className="text-[10px] text-amber-400 font-mono">🎯 Исход: {rule.targetMarket}</div>
+                                    )}
+                                    {!result.matches && result.unmetCriteria && result.unmetCriteria.length > 0 && (
+                                      <div className="text-[10px] text-slate-500 mt-0.5">
+                                        Не выполнено: {result.unmetCriteria[0]}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                                  result.matches ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
+                                }`}>
+                                  {result.matches ? 'СИГНАЛ' : 'НЕТ'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Stat Comparison Bars */}
                   <div className="space-y-4">
@@ -1078,88 +1210,377 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 2: Filter Engine */}
+        {/* Tab 2: Filter Engine (Expanded Management Center) */}
         {activeTab === 'filters' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            {/* Header & Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white">Стратегии и фильтры сигналов</h2>
-                <p className="text-xs text-slate-400">Настройка алгоритмов отслеживания аномалий и автоматической отправки сигналов</p>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Sliders className="h-5 w-5 text-emerald-400" />
+                  Алгоритмические стратегии и фильтры сигналов
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Продвинутый конструктор правил для отслеживания аномалий, анализа давления и мгновенных алертов
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditingFilter(null);
+                    setIsFilterModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition active:scale-95"
+                >
+                  <Plus className="h-4 w-4" />
+                  Создать алгоритм
+                </button>
+
+                <button
+                  onClick={handleResetFilters}
+                  title="Восстановить заводские 8 алгоритмов"
+                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
+                  Сброс пресетов
+                </button>
+
+                <button
+                  onClick={handleExportFiltersJson}
+                  title="Экспортировать правила в JSON"
+                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition"
+                >
+                  <Download className="h-3.5 w-3.5 text-slate-400" />
+                  JSON Экспорт
+                </button>
+
+                <label
+                  title="Импортировать правила из JSON"
+                  className="cursor-pointer px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition"
+                >
+                  <Upload className="h-3.5 w-3.5 text-slate-400" />
+                  JSON Импорт
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportFiltersJson}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filters.map((filter) => (
-                <div key={filter.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                        {filter.minMinute}' - {filter.maxMinute}'
-                      </span>
-                      <button
-                        onClick={() =>
-                          setFilters((prev) =>
-                            prev.map((f) => (f.id === filter.id ? { ...f, enabled: !f.enabled } : f))
-                          )
-                        }
-                        className={`text-xs px-2.5 py-1 rounded-full font-medium transition ${
-                          filter.enabled
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                            : 'bg-slate-800 text-slate-500'
+            {/* Category Filter Chips & Search Bar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: 'all', label: 'Все', icon: '⚡' },
+                    { id: 'goals', label: 'Голы', icon: '⚽' },
+                    { id: 'corners', label: 'Угловые', icon: '🚩' },
+                    { id: 'comeback', label: 'Камбэк', icon: '🎯' },
+                    { id: 'halftime', label: '1-й тайм', icon: '⏱️' },
+                    { id: 'pressure', label: 'Давление', icon: '🔥' },
+                    { id: 'cards', label: 'Карточки', icon: '🟥' },
+                    { id: 'custom', label: 'Мои фильтры', icon: '🛠️' },
+                  ] as Array<{ id: FilterCategory; label: string; icon: string }>
+                ).map((cat) => {
+                  const count =
+                    cat.id === 'all'
+                      ? filters.length
+                      : cat.id === 'custom'
+                      ? filters.filter((f) => !f.isPreset).length
+                      : filters.filter((f) => f.category === cat.id).length;
+
+                  const isSelected = activeFilterCategory === cat.id;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveFilterCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                        isSelected
+                          ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                          : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+                      }`}
+                    >
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'
                         }`}
                       >
-                        {filter.enabled ? 'Активен' : 'Отключен'}
-                      </button>
-                    </div>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                    <h3 className="text-sm font-bold text-white">{filter.name}</h3>
-                    <p className="text-xs text-slate-400">{filter.description}</p>
+              {/* Search in filters */}
+              <div className="relative min-w-[220px]">
+                <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={filterSearchQuery}
+                  onChange={(e) => setFilterSearchQuery(e.target.value)}
+                  placeholder="Поиск по фильтрам и рынкам..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
 
-                    <div className="pt-2 space-y-1.5 text-xs text-slate-300 font-mono">
-                      <div className="flex justify-between border-b border-slate-800/60 pb-1">
-                        <span className="text-slate-500 font-sans">Условие счета:</span>
-                        <span>{filter.scoreCondition}</span>
-                      </div>
-                      {filter.minDangerousAttacksDiff && (
-                        <div className="flex justify-between border-b border-slate-800/60 pb-1">
-                          <span className="text-slate-500 font-sans">Разница оп. атак:</span>
-                          <span>≥ {filter.minDangerousAttacksDiff}</span>
-                        </div>
-                      )}
-                      {filter.minTotalShots && (
-                        <div className="flex justify-between border-b border-slate-800/60 pb-1">
-                          <span className="text-slate-500 font-sans">Всего ударов:</span>
-                          <span>≥ {filter.minTotalShots}</span>
-                        </div>
-                      )}
-                      {filter.minTotalCorners && (
-                        <div className="flex justify-between border-b border-slate-800/60 pb-1">
-                          <span className="text-slate-500 font-sans">Всего угловых:</span>
-                          <span>≥ {filter.minTotalCorners}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            {/* Grid of Strategy Cards */}
+            {(() => {
+              const filteredList = filters.filter((rule) => {
+                const matchCategory =
+                  activeFilterCategory === 'all'
+                    ? true
+                    : activeFilterCategory === 'custom'
+                    ? !rule.isPreset
+                    : rule.category === activeFilterCategory;
 
-                  <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <Send className="h-3.5 w-3.5 text-blue-400" />
-                      Telegram:
-                    </span>
+                const matchQuery =
+                  !filterSearchQuery.trim() ||
+                  rule.name.toLowerCase().includes(filterSearchQuery.toLowerCase()) ||
+                  rule.description.toLowerCase().includes(filterSearchQuery.toLowerCase()) ||
+                  (rule.targetMarket && rule.targetMarket.toLowerCase().includes(filterSearchQuery.toLowerCase()));
+
+                return matchCategory && matchQuery;
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
+                    <Filter className="h-8 w-8 text-slate-600 mx-auto" />
+                    <p className="text-sm text-slate-400">В этой категории или по вашему запросу нет фильтров.</p>
                     <button
-                      onClick={() =>
-                        setFilters((prev) =>
-                          prev.map((f) => (f.id === filter.id ? { ...f, telegramEnabled: !f.telegramEnabled } : f))
-                        )
-                      }
-                      className={`font-semibold ${filter.telegramEnabled ? 'text-emerald-400' : 'text-slate-500'}`}
+                      onClick={() => {
+                        setActiveFilterCategory('all');
+                        setFilterSearchQuery('');
+                      }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
                     >
-                      {filter.telegramEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+                      Показать все стратегии
                     </button>
                   </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredList.map((filter) => {
+                    const matchingLiveMatches = matches.filter((m) => evaluateFilterRule(m, filter).matches);
+                    const hasLiveMatches = matchingLiveMatches.length > 0;
+
+                    return (
+                      <div
+                        key={filter.id}
+                        className={`bg-slate-900 border rounded-2xl p-5 space-y-4 flex flex-col justify-between transition-all ${
+                          filter.enabled
+                            ? hasLiveMatches
+                              ? 'border-emerald-500/70 shadow-lg shadow-emerald-950/30'
+                              : 'border-slate-800 hover:border-slate-700'
+                            : 'border-slate-800/60 opacity-60'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {/* Top row */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                {filter.minMinute}' - {filter.maxMinute}'
+                              </span>
+                              {filter.category && (
+                                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-800/80 text-emerald-400 border border-emerald-500/20">
+                                  {filter.category}
+                                </span>
+                              )}
+                              {filter.isPreset && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                  Пресет
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() =>
+                                setFilters((prev) =>
+                                  prev.map((f) => (f.id === filter.id ? { ...f, enabled: !f.enabled } : f))
+                                )
+                              }
+                              className={`text-xs px-2.5 py-1 rounded-full font-semibold transition ${
+                                filter.enabled
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+                                  : 'bg-slate-800 text-slate-500 hover:text-slate-400'
+                              }`}
+                            >
+                              {filter.enabled ? 'Активен' : 'Отключен'}
+                            </button>
+                          </div>
+
+                          {/* Rule Title & Target Market */}
+                          <div>
+                            <h3 className="text-sm font-bold text-white leading-tight">{filter.name}</h3>
+                            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{filter.description}</p>
+                            {filter.targetMarket && (
+                              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-medium font-mono">
+                                <Target className="h-3 w-3 text-amber-400" />
+                                {filter.targetMarket}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Live match indicator */}
+                          <div className="pt-1">
+                            {hasLiveMatches ? (
+                              <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold flex items-center justify-between">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                                  Совпадает прямо сейчас ({matchingLiveMatches.length}):
+                                </span>
+                                <span className="font-mono text-white text-[10px]">
+                                  {matchingLiveMatches.map((m) => m.homeTeam).join(', ')}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="px-2.5 py-1 rounded-lg bg-slate-950/60 border border-slate-800/80 text-[10px] text-slate-500 flex items-center gap-1.5">
+                                <Clock className="h-3 w-3" />
+                                Ожидание подходящей ситуации в live
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Conditions Grid */}
+                          <div className="pt-2 space-y-1.5 text-xs text-slate-300 font-mono bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60">
+                            <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                              <span className="text-slate-500 font-sans">Счёт:</span>
+                              <span className="font-bold text-slate-200">
+                                {filter.scoreCondition === '0-0'
+                                  ? '0:0'
+                                  : filter.scoreCondition === 'DRAW'
+                                  ? 'Любая ничья'
+                                  : filter.scoreCondition === 'HOME_LEAD'
+                                  ? 'Хозяева ведут'
+                                  : filter.scoreCondition === 'AWAY_LEAD'
+                                  ? 'Гости ведут'
+                                  : filter.scoreCondition === 'ONE_GOAL_DIFF'
+                                  ? 'Разница в 1 гол'
+                                  : filter.scoreCondition === 'TOTAL_UNDER_2'
+                                  ? 'ТМ 2.5'
+                                  : filter.scoreCondition === 'TOTAL_OVER_2'
+                                  ? 'ТБ 2.5'
+                                  : 'Любой'}
+                              </span>
+                            </div>
+
+                            {filter.minDangerousAttacksDiff && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Разница оп. атак:</span>
+                                <span>≥ {filter.minDangerousAttacksDiff}</span>
+                              </div>
+                            )}
+                            {filter.minTotalShots && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Всего ударов:</span>
+                                <span>≥ {filter.minTotalShots}</span>
+                              </div>
+                            )}
+                            {filter.minShotsOnTargetTotal && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Удары в створ:</span>
+                                <span>≥ {filter.minShotsOnTargetTotal}</span>
+                              </div>
+                            )}
+                            {filter.minTotalCorners && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Всего угловых:</span>
+                                <span>≥ {filter.minTotalCorners}</span>
+                              </div>
+                            )}
+                            {filter.minPressureIndex && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Индекс давления:</span>
+                                <span className="text-rose-400 font-bold">≥ {filter.minPressureIndex}%</span>
+                              </div>
+                            )}
+                            {filter.minXgTotal && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Суммарный xG:</span>
+                                <span>≥ {filter.minXgTotal}</span>
+                              </div>
+                            )}
+                            {filter.redCardCondition === 'HAS_RED_CARD' && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Красная карточка:</span>
+                                <span className="text-rose-400 font-bold">Обязательно (10 vs 11)</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Controls Footer */}
+                        <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                          {/* Telegram Switch */}
+                          <div className="flex items-center gap-1.5">
+                            <Send className="h-3.5 w-3.5 text-blue-400" />
+                            <span className="text-slate-400">Telegram:</span>
+                            <button
+                              onClick={() =>
+                                setFilters((prev) =>
+                                  prev.map((f) => (f.id === filter.id ? { ...f, telegramEnabled: !f.telegramEnabled } : f))
+                                )
+                              }
+                              className={`font-semibold ml-1 ${
+                                filter.telegramEnabled ? 'text-emerald-400' : 'text-slate-500'
+                              }`}
+                            >
+                              {filter.telegramEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+                            </button>
+                          </div>
+
+                          {/* Edit / Clone / Delete buttons */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingFilter(filter);
+                                setIsFilterModalOpen(true);
+                              }}
+                              title="Редактировать фильтр"
+                              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => handleDuplicateFilter(filter)}
+                              title="Дублировать фильтр"
+                              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Удалить фильтр «${filter.name}»?`)) {
+                                  handleDeleteFilter(filter.id);
+                                }
+                              }}
+                              title="Удалить фильтр"
+                              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-950 text-slate-400 hover:text-rose-400 transition"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1650,6 +2071,22 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Filter Builder & Editor Modal */}
+        <FilterBuilderModal
+          isOpen={isFilterModalOpen}
+          initialFilter={editingFilter}
+          liveMatches={matches}
+          onClose={() => {
+            setIsFilterModalOpen(false);
+            setEditingFilter(null);
+          }}
+          onSave={(savedRule) => {
+            handleSaveFilter(savedRule);
+            setIsFilterModalOpen(false);
+            setEditingFilter(null);
+          }}
+        />
       </div>
     </div>
   );
