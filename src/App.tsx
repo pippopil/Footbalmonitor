@@ -24,7 +24,16 @@ import {
   TrendingUp,
   Cpu,
   Shield,
-  Layers
+  Layers,
+  Bot,
+  XCircle,
+  Key,
+  Hash,
+  Volume2,
+  VolumeX,
+  Eye,
+  EyeOff,
+  ExternalLink
 } from 'lucide-react';
 
 interface MatchStats {
@@ -89,6 +98,8 @@ interface SignalAlert {
   ruleName: string;
   message: string;
   sentToTelegram: boolean;
+  telegramStatusText?: string;
+  telegramMessageId?: number;
 }
 
 const INITIAL_MATCHES: Match[] = [
@@ -274,13 +285,158 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'matches' | 'filters' | 'telegram' | 'signals'>('matches');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [signals, setSignals] = useState<SignalAlert[]>([]);
-  const [telegramConfig, setTelegramConfig] = useState({
-    botToken: '6892401248:AAF9...kLpX8',
-    channelId: '@footbalmonitor_live',
-    notificationsCount: 14,
-    lastPing: 'только что',
+  const [telegramConfig, setTelegramConfig] = useState(() => {
+    const saved = localStorage.getItem('footbalmonitor_tg_config');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return {
+      botToken: '',
+      channelId: '',
+      notificationsCount: 0,
+      lastPing: '',
+      autoSend: true,
+      silentMode: false,
+      parseMode: 'HTML' as const,
+    };
   });
-  const [telegramStatus, setTelegramStatus] = useState<'connected' | 'testing' | 'error'>('connected');
+
+  const [telegramStatus, setTelegramStatus] = useState<'idle' | 'checking' | 'connected' | 'error' | 'sending'>('idle');
+  const [telegramBotInfo, setTelegramBotInfo] = useState<{ id?: number; username?: string; first_name?: string } | null>(null);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState<boolean>(false);
+  const [lastSentResult, setLastSentResult] = useState<{ ok: boolean; messageId?: number; text?: string; time?: string } | null>(null);
+
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem('footbalmonitor_tg_config', JSON.stringify(telegramConfig));
+  }, [telegramConfig]);
+
+  // Format alert into structured HTML for Telegram
+  const formatTelegramAlert = (match: Match, ruleName: string): string => {
+    const diffDang = match.stats.dangerousAttacks[0] - match.stats.dangerousAttacks[1];
+    const dangSign = diffDang > 0 ? `+${diffDang} (Хозяева)` : diffDang < 0 ? `+${Math.abs(diffDang)} (Гости)` : 'Равенство';
+    const totalShots = match.stats.shotsOnTarget[0] + match.stats.shotsOnTarget[1] + match.stats.shotsOffTarget[0] + match.stats.shotsOffTarget[1];
+    const totalCorners = match.stats.corners[0] + match.stats.corners[1];
+
+    return `⚽ <b>СИГНАЛ ФИЛЬТРА: ${ruleName}</b>\n` +
+      `🏆 <b>${match.countryCode} ${match.country} | ${match.league}</b>\n\n` +
+      `⚔️ <b>${match.homeTeam} ${match.score[0]} : ${match.score[1]} ${match.awayTeam}</b> (<b>${match.minute}'</b>)\n\n` +
+      `🔥 <b>Опасные атаки:</b> ${match.stats.dangerousAttacks[0]} - ${match.stats.dangerousAttacks[1]} [${dangSign}]\n` +
+      `🎯 <b>Удары в створ:</b> ${match.stats.shotsOnTarget[0]} - ${match.stats.shotsOnTarget[1]} (Всего: ${totalShots})\n` +
+      `🚩 <b>Угловые:</b> ${match.stats.corners[0]} - ${match.stats.corners[1]} (Всего: ${totalCorners})\n` +
+      `📊 <b>xG:</b> ${match.stats.xg[0].toFixed(2)} vs ${match.stats.xg[1].toFixed(2)}\n` +
+      `⚡ <b>Владение мячом:</b> ${match.stats.possession[0]}% - ${match.stats.possession[1]}%\n\n` +
+      `⏱ <i>Время: ${new Date().toLocaleTimeString('ru-RU')} | Источник: ${match.source}</i>\n` +
+      `🤖 <i>Footbalmonitor Live Engine</i>`;
+  };
+
+  // Verify Bot via API
+  const verifyTelegramBot = async (tokenOverride?: string, chatOverride?: string) => {
+    const token = tokenOverride !== undefined ? tokenOverride : telegramConfig.botToken;
+    const chat = chatOverride !== undefined ? chatOverride : telegramConfig.channelId;
+
+    if (!token.trim()) {
+      setTelegramStatus('idle');
+      setTelegramError('Укажите токен бота для проверки.');
+      return;
+    }
+
+    setTelegramStatus('checking');
+    setTelegramError(null);
+    try {
+      const res = await fetch(`/api/telegram/status?token=${encodeURIComponent(token.trim())}&chat_id=${encodeURIComponent(chat.trim())}`);
+      const data = await res.json();
+      if (res.ok && data.configured && data.bot) {
+        setTelegramStatus('connected');
+        setTelegramBotInfo(data.bot);
+        setTelegramConfig((prev: typeof telegramConfig) => ({
+          ...prev,
+          lastPing: new Date().toLocaleTimeString('ru-RU'),
+        }));
+      } else {
+        setTelegramStatus('error');
+        setTelegramError(data.error || 'Не удалось авторизовать бота. Проверьте правильность токена.');
+        setTelegramBotInfo(null);
+      }
+    } catch (err: any) {
+      setTelegramStatus('error');
+      setTelegramError(`Сетевая ошибка при связи с сервером: ${err?.message || err}`);
+    }
+  };
+
+  // Check on mount if token is saved
+  useEffect(() => {
+    if (telegramConfig.botToken) {
+      verifyTelegramBot(telegramConfig.botToken, telegramConfig.channelId);
+    }
+  }, []);
+
+  // Send message through backend API
+  const sendTelegramMessage = async (text: string, isManualTest = false) => {
+    const token = telegramConfig.botToken.trim();
+    const chatId = telegramConfig.channelId.trim();
+
+    if (!token || !chatId) {
+      if (isManualTest) {
+        setTelegramError('Заполните Bot Token и Chat ID перед отправкой сообщения.');
+      }
+      return { ok: false, error: 'Заполните Bot Token и Chat ID' };
+    }
+
+    setTelegramStatus('sending');
+    setTelegramError(null);
+
+    try {
+      const res = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          chat_id: chatId,
+          bot_token: token,
+          disable_notification: telegramConfig.silentMode,
+          parse_mode: telegramConfig.parseMode,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setTelegramStatus('connected');
+        setTelegramConfig((prev: typeof telegramConfig) => ({
+          ...prev,
+          notificationsCount: prev.notificationsCount + 1,
+          lastPing: new Date().toLocaleTimeString('ru-RU'),
+        }));
+        setLastSentResult({
+          ok: true,
+          messageId: data.messageId,
+          text: `Сообщение доставлено в чат/канал (ID: #${data.messageId})`,
+          time: new Date().toLocaleTimeString('ru-RU'),
+        });
+        return { ok: true, messageId: data.messageId };
+      } else {
+        setTelegramStatus('error');
+        const errMsg = data.error || 'Ошибка при отправке в Telegram';
+        setTelegramError(errMsg);
+        setLastSentResult({
+          ok: false,
+          text: errMsg,
+          time: new Date().toLocaleTimeString('ru-RU'),
+        });
+        return { ok: false, error: errMsg };
+      }
+    } catch (err: any) {
+      setTelegramStatus('error');
+      const netErr = `Сетевая ошибка отправки: ${err?.message || err}`;
+      setTelegramError(netErr);
+      return { ok: false, error: netErr };
+    }
+  };
 
   // Simulation: live ticking
   useEffect(() => {
@@ -327,7 +483,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isMonitoringActive]);
 
-  // Check filter triggers
+  // Check filter triggers and auto-send alerts
   useEffect(() => {
     matches.forEach((match) => {
       filters.filter((f) => f.enabled).forEach((rule) => {
@@ -364,6 +520,8 @@ export default function App() {
         const alertId = `${match.id}-${rule.id}-${match.minute}`;
         setSignals((prev) => {
           if (prev.some((s) => s.id === alertId)) return prev;
+
+          const shouldSendTg = rule.telegramEnabled && telegramConfig.autoSend && !!telegramConfig.botToken && !!telegramConfig.channelId;
           const newAlert: SignalAlert = {
             id: alertId,
             timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -375,13 +533,32 @@ export default function App() {
             score: `${match.score[0]}:${match.score[1]}`,
             ruleName: rule.name,
             message: `⚽ [СИГНАЛ] ${match.country} | ${match.league}\n${match.homeTeam} ${match.score[0]}:${match.score[1]} ${match.awayTeam} (${match.minute}')\n🔥 Давление: Оп. атаки ${match.stats.dangerousAttacks[0]}-${match.stats.dangerousAttacks[1]} | Удары в створ ${match.stats.shotsOnTarget[0]}-${match.stats.shotsOnTarget[1]} | Углы ${match.stats.corners[0]}-${match.stats.corners[1]}`,
-            sentToTelegram: rule.telegramEnabled,
+            sentToTelegram: shouldSendTg,
+            telegramStatusText: shouldSendTg ? 'Отправка в Telegram...' : 'Локальный сигнал',
           };
+
+          if (shouldSendTg) {
+            sendTelegramMessage(formatTelegramAlert(match, rule.name)).then((res) => {
+              setSignals((curr) =>
+                curr.map((item) =>
+                  item.id === alertId
+                    ? {
+                        ...item,
+                        sentToTelegram: res.ok,
+                        telegramStatusText: res.ok ? `Доставлено в TG (#${res.messageId})` : (res.error || 'Ошибка отправки'),
+                        telegramMessageId: res.messageId,
+                      }
+                    : item
+                )
+              );
+            });
+          }
+
           return [newAlert, ...prev].slice(0, 50);
         });
       });
     });
-  }, [matches, filters]);
+  }, [matches, filters, telegramConfig.autoSend, telegramConfig.botToken, telegramConfig.channelId]);
 
   const selectedMatch = useMemo(() => {
     return matches.find((m) => m.id === selectedMatchId) || matches[0];
@@ -397,10 +574,16 @@ export default function App() {
     );
   }, [matches, searchQuery]);
 
-  const triggerTestSignal = () => {
+  const triggerTestSignal = async () => {
     if (!selectedMatch) return;
+    const alertId = `manual-${Date.now()}`;
+    const textHtml = formatTelegramAlert(selectedMatch, 'Ручной тестовый пуш');
+    const displayMsg = `🔔 [ТЕСТОВЫЙ ПУШ]\n${selectedMatch.countryCode} ${selectedMatch.country} | ${selectedMatch.league}\n${selectedMatch.homeTeam} ${selectedMatch.score[0]}:${selectedMatch.score[1]} ${selectedMatch.awayTeam} (${selectedMatch.minute}')\nОпасные атаки: ${selectedMatch.stats.dangerousAttacks[0]}-${selectedMatch.stats.dangerousAttacks[1]} | Удары: ${selectedMatch.stats.shotsOnTarget[0]}-${selectedMatch.stats.shotsOnTarget[1]}`;
+
+    const res = await sendTelegramMessage(textHtml, true);
+
     const testAlert: SignalAlert = {
-      id: `manual-${Date.now()}`,
+      id: alertId,
       timestamp: new Date().toLocaleTimeString('ru-RU'),
       matchId: selectedMatch.id,
       matchName: `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`,
@@ -408,16 +591,13 @@ export default function App() {
       country: selectedMatch.country,
       minute: selectedMatch.minute,
       score: `${selectedMatch.score[0]}:${selectedMatch.score[1]}`,
-      ruleName: 'Ручной тестовый сигнал (Flashscore / Telegram)',
-      message: `🔔 [ТЕСТОВЫЙ СИГНАЛ]\n${selectedMatch.countryCode} ${selectedMatch.country} | ${selectedMatch.league}\n${selectedMatch.homeTeam} ${selectedMatch.score[0]}:${selectedMatch.score[1]} ${selectedMatch.awayTeam} (${selectedMatch.minute}')\n📊 Опасные атаки: ${selectedMatch.stats.dangerousAttacks[0]}-${selectedMatch.stats.dangerousAttacks[1]} | Удары: ${selectedMatch.stats.shotsOnTarget[0]}-${selectedMatch.stats.shotsOnTarget[1]}`,
-      sentToTelegram: true,
+      ruleName: 'Ручной тестовый пуш (Telegram)',
+      message: displayMsg,
+      sentToTelegram: res.ok,
+      telegramStatusText: res.ok ? `Доставлено в TG (#${res.messageId})` : (res.error || 'Ошибка отправки'),
+      telegramMessageId: res.messageId,
     };
     setSignals((prev) => [testAlert, ...prev]);
-    setTelegramStatus('testing');
-    setTimeout(() => {
-      setTelegramStatus('connected');
-      setTelegramConfig((c) => ({ ...c, notificationsCount: c.notificationsCount + 1 }));
-    }, 1000);
   };
 
   return (
@@ -973,9 +1153,13 @@ export default function App() {
                         <span className="font-semibold text-white">{sig.country} • {sig.league}</span>
                         <span className="text-slate-500 font-mono text-[11px]">{sig.timestamp}</span>
                       </div>
-                      <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                      <span className={`text-xs px-2.5 py-0.5 rounded flex items-center gap-1.5 font-medium border ${
+                        sig.sentToTelegram
+                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}>
                         <Send className="h-3 w-3" />
-                        {sig.sentToTelegram ? 'Отправлено в TG' : 'Локально'}
+                        {sig.telegramStatusText || (sig.sentToTelegram ? 'Отправлено в TG' : 'Локально')}
                       </span>
                     </div>
 
@@ -992,77 +1176,324 @@ export default function App() {
 
         {/* Tab 4: Telegram Settings & Preview */}
         {activeTab === 'telegram' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Config Box */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Send className="h-5 w-5 text-blue-400" />
-                Настройки Telegram бота
-              </h2>
-              <p className="text-xs text-slate-400">
-                Конфигурация параметров для отправки форматированных сигналов в канал или группу
-              </p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Config & Controls (7 cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-white flex items-center gap-2">
+                        <Bot className="h-5 w-5 text-sky-400" />
+                        Параметры Telegram бота
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Отправка оповещений в реальном времени при совпадении live-фильтров матчей
+                      </p>
+                    </div>
 
-              <div className="space-y-3 pt-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Bot Token</label>
-                  <input
-                    type="password"
-                    value={telegramConfig.botToken}
-                    onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 font-mono focus:border-blue-500 focus:outline-none"
-                  />
+                    {/* Status Badge */}
+                    <div>
+                      {telegramStatus === 'connected' && telegramBotInfo ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>@{telegramBotInfo.username || 'Бот активен'}</span>
+                        </div>
+                      ) : telegramStatus === 'checking' ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-semibold">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          <span>Проверка токена...</span>
+                        </div>
+                      ) : telegramStatus === 'sending' ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold">
+                          <Send className="h-3.5 w-3.5 animate-pulse" />
+                          <span>Отправка в TG...</span>
+                        </div>
+                      ) : telegramStatus === 'error' ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+                          <XCircle className="h-3.5 w-3.5" />
+                          <span>Ошибка связи</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs">
+                          <span>Не подключен</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Form fields */}
+                  <div className="space-y-4 pt-1">
+                    {/* Bot Token Input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                          <Key className="h-3.5 w-3.5 text-slate-400" />
+                          Bot Token (от @BotFather)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowToken(!showToken)}
+                          className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1"
+                        >
+                          {showToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          {showToken ? 'Скрыть' : 'Показать'}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showToken ? 'text' : 'password'}
+                          placeholder="Пример: 6892401248:AAF9j3-xLpQ..."
+                          value={telegramConfig.botToken}
+                          onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 font-mono focus:border-sky-500 focus:outline-none placeholder:text-slate-600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Chat ID Input */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                        <Hash className="h-3.5 w-3.5 text-slate-400" />
+                        Chat ID или Юзернейм канала
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Пример: @my_channel_name или -1001234567890"
+                        value={telegramConfig.channelId}
+                        onChange={(e) => setTelegramConfig({ ...telegramConfig, channelId: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 font-mono focus:border-sky-500 focus:outline-none placeholder:text-slate-600"
+                      />
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div
+                        onClick={() => setTelegramConfig({ ...telegramConfig, autoSend: !telegramConfig.autoSend })}
+                        className={`p-3 rounded-lg border cursor-pointer flex items-center justify-between transition ${
+                          telegramConfig.autoSend
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <div className="text-xs font-medium">
+                          <div className="font-semibold text-white">Автоотправка сигналов</div>
+                          <div className="text-[11px] text-slate-400">При срабатывании фильтров</div>
+                        </div>
+                        <div
+                          className={`w-9 h-5 rounded-full relative transition-colors ${
+                            telegramConfig.autoSend ? 'bg-emerald-500' : 'bg-slate-700'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
+                              telegramConfig.autoSend ? 'left-4.5' : 'left-0.5'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={() => setTelegramConfig({ ...telegramConfig, silentMode: !telegramConfig.silentMode })}
+                        className={`p-3 rounded-lg border cursor-pointer flex items-center justify-between transition ${
+                          telegramConfig.silentMode
+                            ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <div className="text-xs font-medium">
+                          <div className="font-semibold text-white flex items-center gap-1.5">
+                            {telegramConfig.silentMode ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                            Тихий режим
+                          </div>
+                          <div className="text-[11px] text-slate-400">Без звука на устройствах</div>
+                        </div>
+                        <div
+                          className={`w-9 h-5 rounded-full relative transition-colors ${
+                            telegramConfig.silentMode ? 'bg-blue-500' : 'bg-slate-700'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
+                              telegramConfig.silentMode ? 'left-4.5' : 'left-0.5'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => verifyTelegramBot()}
+                        disabled={telegramStatus === 'checking'}
+                        className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${telegramStatus === 'checking' ? 'animate-spin' : ''}`} />
+                        Проверить статус бота
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={triggerTestSignal}
+                        disabled={telegramStatus === 'sending' || !telegramConfig.botToken || !telegramConfig.channelId}
+                        className="px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-sky-900/30"
+                      >
+                        <Send className={`h-3.5 w-3.5 ${telegramStatus === 'sending' ? 'animate-pulse' : ''}`} />
+                        Отправить тестовый сигнал
+                      </button>
+                    </div>
+
+                    {/* Error or Success notification */}
+                    {telegramError && (
+                      <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-rose-200">Ошибка взаимодействия с Telegram</div>
+                          <div className="mt-0.5 text-[11px] text-rose-300/90">{telegramError}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {lastSentResult && (
+                      <div
+                        className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+                          lastSentResult.ok
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        }`}
+                      >
+                        {lastSentResult.ok ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+                        ) : (
+                          <XCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-semibold">{lastSentResult.ok ? 'Успешная доставка' : 'Статус отправки'}</div>
+                          <div className="text-[11px]">{lastSentResult.text} ({lastSentResult.time})</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Chat / Channel ID</label>
-                  <input
-                    type="text"
-                    value={telegramConfig.channelId}
-                    onChange={(e) => setTelegramConfig({ ...telegramConfig, channelId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 font-mono focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    onClick={triggerTestSignal}
-                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-2 transition"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Проверить отправку
-                  </button>
-                  <span className="text-xs text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Соединение установлено
-                  </span>
+                {/* Setup Guide */}
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-5 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Инструкция по подключению Telegram
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-300">
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                      <div className="font-bold text-sky-400">1. Создайте бота</div>
+                      <p className="text-[11px] text-slate-400">
+                        Откройте <strong className="text-slate-200">@BotFather</strong>, напишите <code className="text-sky-300 font-mono">/newbot</code> и скопируйте HTTP API токен.
+                      </p>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                      <div className="font-bold text-sky-400">2. Добавьте в канал</div>
+                      <p className="text-[11px] text-slate-400">
+                        Добавьте созданного бота в администраторы вашего канала или группы с правом публикации.
+                      </p>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                      <div className="font-bold text-sky-400">3. Укажите Chat ID</div>
+                      <p className="text-[11px] text-slate-400">
+                        Для публичного канала введите <code className="text-sky-300 font-mono">@имя_канала</code>, для приватного — числовой ID.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Telegram Message Preview Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-3">
-              <h2 className="text-base font-bold text-white">Предпросмотр сообщения в Telegram</h2>
-              <div className="bg-[#17212b] border border-[#232e3c] rounded-xl p-4 text-slate-200 text-xs font-sans space-y-2 shadow-inner">
-                <div className="flex items-center justify-between border-b border-[#242f3d] pb-2 text-[11px] text-sky-400 font-semibold">
-                  <span>Footbalmonitor Alert Bot</span>
-                  <span className="text-slate-500">14:15</span>
-                </div>
-                <div className="font-bold text-white text-sm">
-                  🇪🇸 Spain | LaLiga EA Sports
-                </div>
-                <div className="font-semibold text-emerald-400">
-                  Real Madrid 0 : 0 Valencia (74')
-                </div>
-                <div className="text-slate-300 text-xs leading-relaxed">
-                  🔥 <strong>Давление:</strong> Опасные атаки 82 - 19 (+63)<br />
-                  🎯 <strong>Удары:</strong> В створ 9 - 1 (Всего 17 - 3)<br />
-                  ⛳ <strong>Угловые:</strong> 11 - 1<br />
-                  📊 <strong>xG:</strong> 2.15 vs 0.22<br />
-                  📈 <strong>Коэффициент ТБ 0.5:</strong> 1.55
-                </div>
-                <div className="text-[10px] text-slate-500 pt-1 border-t border-[#242f3d]">
-                  Триггер: Доминирование при ничьей 0:0 (60-80 мин)
+              {/* Right Column: Telegram Live Preview (5 cols) */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      <Radio className="h-4 w-4 text-emerald-400" />
+                      Предпросмотр сигнала в Telegram
+                    </h2>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Матч: {selectedMatch?.homeTeam}
+                    </span>
+                  </div>
+
+                  {/* Telegram Client Simulation Card */}
+                  <div className="bg-[#17212b] border border-[#242f3d] rounded-2xl p-4 text-slate-200 text-xs font-sans space-y-2.5 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-[#242f3d]/80 pb-2 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-sky-600 flex items-center justify-center text-[10px] font-bold text-white">
+                          FM
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sky-400">
+                            {telegramBotInfo?.first_name || 'Footbalmonitor Alert Bot'}
+                          </div>
+                          <div className="text-[9px] text-slate-400">
+                            {telegramBotInfo?.username ? `@${telegramBotInfo.username}` : 'bot'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-slate-400 text-[10px] font-mono">
+                        {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-slate-200 leading-relaxed font-sans text-xs">
+                      <div>
+                        ⚽ <span className="font-bold text-white">СИГНАЛ:</span> <span className="text-amber-300 font-semibold">Доминирование при ничьей 0:0</span>
+                      </div>
+                      <div>
+                        🏆 <span className="font-bold text-slate-100">{selectedMatch?.countryCode} {selectedMatch?.country} | {selectedMatch?.league}</span>
+                      </div>
+
+                      <div className="bg-[#1f2b38] p-2.5 rounded-lg border border-[#2b3a4a] my-2">
+                        <div className="text-sm font-bold text-emerald-400 flex items-center justify-between">
+                          <span>{selectedMatch?.homeTeam} {selectedMatch?.score[0]} : {selectedMatch?.score[1]} {selectedMatch?.awayTeam}</span>
+                          <span className="text-xs font-mono text-emerald-300">({selectedMatch?.minute}')</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-slate-300 text-[11.5px]">
+                        <div>
+                          🔥 <strong>Опасные атаки:</strong> {selectedMatch?.stats.dangerousAttacks[0]} - {selectedMatch?.stats.dangerousAttacks[1]} <span className="text-emerald-400">(+{Math.abs((selectedMatch?.stats.dangerousAttacks[0] || 0) - (selectedMatch?.stats.dangerousAttacks[1] || 0))})</span>
+                        </div>
+                        <div>
+                          🎯 <strong>Удары в створ:</strong> {selectedMatch?.stats.shotsOnTarget[0]} - {selectedMatch?.stats.shotsOnTarget[1]} (Всего: {(selectedMatch?.stats.shotsOnTarget[0] || 0) + (selectedMatch?.stats.shotsOnTarget[1] || 0) + (selectedMatch?.stats.shotsOffTarget[0] || 0) + (selectedMatch?.stats.shotsOffTarget[1] || 0)})
+                        </div>
+                        <div>
+                          🚩 <strong>Угловые:</strong> {selectedMatch?.stats.corners[0]} - {selectedMatch?.stats.corners[1]}
+                        </div>
+                        <div>
+                          📊 <strong>xG:</strong> {selectedMatch?.stats.xg[0].toFixed(2)} vs {selectedMatch?.stats.xg[1].toFixed(2)}
+                        </div>
+                        <div>
+                          ⚡ <strong>Владение:</strong> {selectedMatch?.stats.possession[0]}% - {selectedMatch?.stats.possession[1]}%
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#242f3d]/80 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>Источник: {selectedMatch?.source}</span>
+                        <span className="italic">Footbalmonitor Live Engine</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Telegram Stats */}
+                  <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                      <div className="text-slate-400 text-[11px]">Отправлено сигналов</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">{telegramConfig.notificationsCount}</div>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                      <div className="text-slate-400 text-[11px]">Последняя активность</div>
+                      <div className="text-xs font-semibold text-emerald-400 font-mono mt-1">
+                        {telegramConfig.lastPing || 'Ожидание'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
