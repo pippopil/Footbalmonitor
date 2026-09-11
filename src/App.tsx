@@ -43,6 +43,7 @@ import {
   Upload,
   RotateCcw,
   Check,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 import {
@@ -50,6 +51,7 @@ import {
   MatchStats,
   FilterRule,
   SignalAlert,
+  SignalOutcome,
   TelegramConfig,
   FilterCategory,
   ScoreCondition,
@@ -62,6 +64,117 @@ import {
   formatExtendedTelegramAlert,
 } from './algorithms';
 import { FilterBuilderModal } from './components/FilterBuilderModal';
+import { BacktestingView } from './components/BacktestingView';
+import { getEstimatedOdds } from './backtestEngine';
+
+const INITIAL_SIGNALS: SignalAlert[] = [
+  {
+    id: 'sig-seed-1',
+    timestamp: '15:42:10',
+    matchId: 'm-1',
+    matchName: 'Arsenal vs Chelsea',
+    league: 'Premier League',
+    country: 'England',
+    minute: 68,
+    score: '1:1',
+    ruleName: 'Штурм аутсайдера / Фаворит давит',
+    marketSuggestion: 'ТБ 0.5 во 2-м тайме',
+    message: '⚽ [СИГНАЛ] England | Premier League\nArsenal 1:1 Chelsea (68\')\n🎯 Исход: ТБ 0.5 во 2-м тайме\n🔥 Давление: 84/100 | Оп. атаки 64-38',
+    sentToTelegram: true,
+    telegramStatusText: 'Доставлено в TG',
+    outcome: 'WIN',
+    odds: 1.82,
+    stake: 1000,
+    profit: 820,
+    finalScore: '2:1',
+    resolutionNote: 'Гол забит на 82-й минуте (2:1)',
+    resolvedAt: '16:05:00',
+  },
+  {
+    id: 'sig-seed-2',
+    timestamp: '14:20:05',
+    matchId: 'm-2',
+    matchName: 'Real Madrid vs Sevilla',
+    league: 'La Liga',
+    country: 'Spain',
+    minute: 74,
+    score: '0:0',
+    ruleName: 'Супер-доминация по xG при 0:0',
+    marketSuggestion: 'ТБ 0.5 в матче / Победа 1',
+    message: '⚽ [СИГНАЛ] Spain | La Liga\nReal Madrid 0:0 Sevilla (74\')\n🎯 Исход: ТБ 0.5 в матче\n🔥 Давление: 78/100 | xG 2.10 vs 0.35',
+    sentToTelegram: true,
+    telegramStatusText: 'Доставлено в TG',
+    outcome: 'WIN',
+    odds: 1.95,
+    stake: 1000,
+    profit: 950,
+    finalScore: '1:0',
+    resolutionNote: 'Гол на 86-й минуте (1:0)',
+    resolvedAt: '14:40:00',
+  },
+  {
+    id: 'sig-seed-3',
+    timestamp: '13:10:44',
+    matchId: 'm-3',
+    matchName: 'Bayern Munich vs RB Leipzig',
+    league: 'Bundesliga',
+    country: 'Germany',
+    minute: 82,
+    score: '2:1',
+    ruleName: 'Серия угловых в концовке',
+    marketSuggestion: 'Тотал больше угловых',
+    message: '⚽ [СИГНАЛ] Germany | Bundesliga\nBayern Munich 2:1 RB Leipzig (82\')\n🎯 Исход: ТБ угловых\n🚩 Угловые: 8-5',
+    sentToTelegram: false,
+    telegramStatusText: 'Локальный сигнал',
+    outcome: 'WIN',
+    odds: 1.90,
+    stake: 1000,
+    profit: 900,
+    finalScore: '2:1',
+    resolutionNote: 'Подано 3 угловых в концовке (итог 16)',
+    resolvedAt: '13:25:00',
+  },
+  {
+    id: 'sig-seed-4',
+    timestamp: '12:05:12',
+    matchId: 'm-4',
+    matchName: 'Juventus vs Napoli',
+    league: 'Serie A',
+    country: 'Italy',
+    minute: 65,
+    score: '0:1',
+    ruleName: 'Потенциал камбэка фаворита',
+    marketSuggestion: '1X / Фора (0) / ИТБ1 (0.5)',
+    message: '⚽ [СИГНАЛ] Italy | Serie A\nJuventus 0:1 Napoli (65\')\n🎯 Исход: 1X Камбэк\n🔥 Давление: 72/100',
+    sentToTelegram: true,
+    telegramStatusText: 'Доставлено в TG',
+    outcome: 'LOSS',
+    odds: 2.10,
+    stake: 1000,
+    profit: -1000,
+    finalScore: '0:1',
+    resolutionNote: 'Матч завершился со счетом 0:1, камбэк не состоялся',
+    resolvedAt: '12:35:00',
+  },
+  {
+    id: 'sig-seed-5',
+    timestamp: '11:45:00',
+    matchId: 'm-5',
+    matchName: 'Flamengo vs Palmeiras',
+    league: 'Serie A Betano',
+    country: 'Brazil',
+    minute: 38,
+    score: '0:0',
+    ruleName: 'Гол в первом тайме',
+    marketSuggestion: 'ТБ 0.5 в 1-м тайме',
+    message: '⚽ [СИГНАЛ] Brazil | Serie A\nFlamengo 0:0 Palmeiras (38\')\n🎯 Исход: ТБ 0.5 в 1-м тайме\n🔥 Давление: 68/100',
+    sentToTelegram: true,
+    telegramStatusText: 'Доставлено в TG',
+    outcome: 'PENDING',
+    odds: 2.05,
+    stake: 1000,
+  },
+];
 
 const INITIAL_MATCHES: Match[] = [
   {
@@ -228,9 +341,91 @@ export default function App() {
 
   const [selectedMatchId, setSelectedMatchId] = useState<string>(INITIAL_MATCHES[0].id);
   const [isMonitoringActive, setIsMonitoringActive] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'matches' | 'filters' | 'telegram' | 'signals'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'filters' | 'signals' | 'backtest' | 'telegram'>('matches');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [signals, setSignals] = useState<SignalAlert[]>([]);
+  
+  // Persistent signals tracker state
+  const [signals, setSignals] = useState<SignalAlert[]>(() => {
+    const saved = localStorage.getItem('footbalmonitor_signals');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+    return INITIAL_SIGNALS;
+  });
+
+  // Save signals to localStorage
+  useEffect(() => {
+    localStorage.setItem('footbalmonitor_signals', JSON.stringify(signals));
+  }, [signals]);
+
+  // Signal tracker UI filters
+  const [signalOutcomeFilter, setSignalOutcomeFilter] = useState<'ALL' | 'WIN' | 'LOSS' | 'PENDING' | 'REFUND'>('ALL');
+  const [signalSearchQuery, setSignalSearchQuery] = useState<string>('');
+
+  // Update signal outcome (WIN, LOSS, REFUND, PENDING)
+  const updateSignalOutcome = (signalId: string, outcome: SignalOutcome, oddsOverride?: number) => {
+    setSignals((prev) =>
+      prev.map((sig) => {
+        if (sig.id !== signalId) return sig;
+        const finalOdds = oddsOverride !== undefined ? oddsOverride : sig.odds;
+        const stake = sig.stake || 1000;
+        let profit: number | undefined = undefined;
+        if (outcome === 'WIN') {
+          profit = Number(((finalOdds - 1) * stake).toFixed(2));
+        } else if (outcome === 'LOSS') {
+          profit = -stake;
+        } else if (outcome === 'REFUND') {
+          profit = 0;
+        }
+        return {
+          ...sig,
+          outcome,
+          odds: finalOdds,
+          profit,
+          resolvedAt: outcome !== 'PENDING' ? new Date().toLocaleTimeString('ru-RU') : undefined,
+        };
+      })
+    );
+  };
+
+  // Export signals to CSV
+  const handleExportSignalsCsv = () => {
+    const headers = ['ID', 'Время', 'Матч', 'Лига', 'Страна', 'Мин', 'Счет', 'Итог', 'Стратегия', 'Маркет', 'Кэф', 'Ставка', 'Исход', 'Профит', 'Telegram'];
+    const rows = signals.map((s) => [
+      s.id,
+      s.timestamp,
+      `"${s.matchName.replace(/"/g, '""')}"`,
+      `"${s.league.replace(/"/g, '""')}"`,
+      `"${s.country.replace(/"/g, '""')}"`,
+      s.minute,
+      `"${s.score}"`,
+      `"${s.finalScore || '-'}"`,
+      `"${s.ruleName.replace(/"/g, '""')}"`,
+      `"${(s.marketSuggestion || '').replace(/"/g, '""')}"`,
+      s.odds,
+      s.stake,
+      s.outcome,
+      s.profit !== undefined ? s.profit : '',
+      s.sentToTelegram ? 'Отправлено' : 'Локально',
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `footbalmonitor_signals_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
   const [telegramConfig, setTelegramConfig] = useState(() => {
     const saved = localStorage.getItem('footbalmonitor_tg_config');
     if (saved) {
@@ -493,6 +688,7 @@ export default function App() {
           if (prev.some((s) => s.id === alertId)) return prev;
 
           const shouldSendTg = rule.telegramEnabled && telegramConfig.autoSend && !!telegramConfig.botToken && !!telegramConfig.channelId;
+          const estimatedOdds = getEstimatedOdds(rule.targetMarket, match.minute);
           const newAlert: SignalAlert = {
             id: alertId,
             timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -502,8 +698,12 @@ export default function App() {
             country: match.country,
             minute: match.minute,
             score: `${match.score[0]}:${match.score[1]}`,
+            ruleId: rule.id,
             ruleName: rule.name,
             marketSuggestion: rule.targetMarket,
+            outcome: 'PENDING',
+            odds: estimatedOdds,
+            stake: 1000,
             message: `⚽ [СИГНАЛ] ${match.country} | ${match.league}\n${match.homeTeam} ${match.score[0]}:${match.score[1]} ${match.awayTeam} (${match.minute}')\n` +
               (rule.targetMarket ? `🎯 Исход: ${rule.targetMarket}\n` : '') +
               `🔥 Давление: ${analysis.pressureIndex}/100 | Оп. атаки ${match.stats.dangerousAttacks[0]}-${match.stats.dangerousAttacks[1]} | Удары в створ ${match.stats.shotsOnTarget[0]}-${match.stats.shotsOnTarget[1]} | Углы ${match.stats.corners[0]}-${match.stats.corners[1]}`,
@@ -629,8 +829,16 @@ export default function App() {
       country: selectedMatch.country,
       minute: selectedMatch.minute,
       score: `${selectedMatch.score[0]}:${selectedMatch.score[1]}`,
+      ruleId: activeRule?.id,
       ruleName: `Тестовый сигнал (${activeRule?.name || 'Ручной'})`,
-      marketSuggestion: activeRule?.targetMarket,
+      marketSuggestion: activeRule?.targetMarket || 'ТБ 0.5',
+      outcome: 'WIN',
+      odds: 1.85,
+      stake: 1000,
+      profit: 850,
+      finalScore: `${selectedMatch.score[0] + 1}:${selectedMatch.score[1]}`,
+      resolutionNote: 'Тестовый сигнал подтвержден (зашел)',
+      resolvedAt: new Date().toLocaleTimeString('ru-RU'),
       message: displayMsg,
       sentToTelegram: res.ok,
       telegramStatusText: res.ok ? `Доставлено в TG (#${res.messageId})` : (res.error || 'Ошибка отправки'),
@@ -708,6 +916,17 @@ export default function App() {
                   {signals.length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('backtest')}
+              className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 ${
+                activeTab === 'backtest'
+                  ? 'bg-slate-800 text-white font-medium shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <TrendingUp className="h-3 w-3 text-emerald-400" />
+              Бэктестинг & ROI
             </button>
             <button
               onClick={() => setActiveTab('telegram')}
@@ -1584,70 +1803,385 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 3: Signal Feed */}
-        {activeTab === 'signals' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-white">Лента сработавших сигналов ({signals.length})</h2>
-                <p className="text-xs text-slate-400">История автоматических триггеров и отправленных уведомлений</p>
-              </div>
-              {signals.length > 0 && (
-                <button
-                  onClick={() => setSignals([])}
-                  className="text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-800"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Очистить журнал
-                </button>
-              )}
-            </div>
+        {/* Tab 3: Signal Feed & Real-time Tracker */}
+        {activeTab === 'signals' && (() => {
+          const totalCount = signals.length;
+          const winsCount = signals.filter((s) => s.outcome === 'WIN').length;
+          const lossesCount = signals.filter((s) => s.outcome === 'LOSS').length;
+          const pendingCount = signals.filter((s) => s.outcome === 'PENDING').length;
+          const refundsCount = signals.filter((s) => s.outcome === 'REFUND').length;
+          const resolvedCount = winsCount + lossesCount;
+          const winRate = resolvedCount > 0 ? Number(((winsCount / resolvedCount) * 100).toFixed(1)) : 0;
+          const totalProfit = signals.reduce((acc, s) => acc + (s.profit || 0), 0);
+          const totalStaked = resolvedCount * 1000;
+          const roi = totalStaked > 0 ? Number(((totalProfit / totalStaked) * 100).toFixed(1)) : 0;
 
-            {signals.length === 0 ? (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center space-y-3">
-                <Bell className="h-8 w-8 text-slate-600 mx-auto" />
-                <p className="text-sm text-slate-400">Пока нет зафиксированных сигналов в текущей сессии.</p>
-                <button
-                  onClick={triggerTestSignal}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
-                >
-                  Отправить тестовый сигнал
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {signals.map((sig) => (
-                  <div key={sig.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold font-mono">
-                          {sig.minute}'
-                        </span>
-                        <span className="font-semibold text-white">{sig.country} • {sig.league}</span>
-                        <span className="text-slate-500 font-mono text-[11px]">{sig.timestamp}</span>
-                      </div>
-                      <span className={`text-xs px-2.5 py-0.5 rounded flex items-center gap-1.5 font-medium border ${
-                        sig.sentToTelegram
-                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}>
-                        <Send className="h-3 w-3" />
-                        {sig.telegramStatusText || (sig.sentToTelegram ? 'Отправлено в TG' : 'Локально')}
+          const filteredSignalsList = signals.filter((sig) => {
+            const matchesOutcome =
+              signalOutcomeFilter === 'ALL'
+                ? true
+                : sig.outcome === signalOutcomeFilter;
+            const matchesSearch =
+              !signalSearchQuery.trim() ||
+              sig.matchName.toLowerCase().includes(signalSearchQuery.toLowerCase()) ||
+              sig.ruleName.toLowerCase().includes(signalSearchQuery.toLowerCase()) ||
+              sig.league.toLowerCase().includes(signalSearchQuery.toLowerCase());
+            return matchesOutcome && matchesSearch;
+          });
+
+          return (
+            <div className="space-y-6">
+              {/* Header & KPI Summary */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Target className="h-5 w-5 text-emerald-400" />
+                      Трекер проходимости сигналов (Live Win Rate & ROI)
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Учет результатов ставок, проходимость стратегий в реальном времени и экспорт отчетов
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportSignalsCsv}
+                      className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
+                      Экспорт в CSV
+                    </button>
+                    {signals.length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Очистить всю историю сигналов текущей сессии?')) {
+                            setSignals([]);
+                          }
+                        }}
+                        className="text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-rose-900 transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tracker KPI Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div className="text-[11px] text-slate-400">Проходимость (Win Rate)</div>
+                    <div className="text-2xl font-bold font-mono mt-1 text-white">
+                      <span
+                        className={
+                          winRate >= 65
+                            ? 'text-emerald-400'
+                            : winRate >= 50
+                            ? 'text-amber-400'
+                            : 'text-rose-400'
+                        }
+                      >
+                        {winRate}%
                       </span>
                     </div>
-
-                    <div className="text-sm font-bold text-white">{sig.matchName} ({sig.score})</div>
-                    <div className="text-xs text-slate-400 font-mono bg-slate-950 p-3 rounded-lg whitespace-pre-line border border-slate-800/80">
-                      {sig.message}
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {winsCount} зашло / {lossesCount} не зашло
                     </div>
                   </div>
-                ))}
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div className="text-[11px] text-slate-400">Чистый профит (PnL)</div>
+                    <div className="text-2xl font-bold font-mono mt-1">
+                      <span className={totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                        {totalProfit >= 0 ? `+${totalProfit.toLocaleString('ru-RU')}` : totalProfit.toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {totalProfit >= 0 ? '+' : ''}{(totalProfit / 1000).toFixed(2)} флетов (флет 1 000 ₽)
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div className="text-[11px] text-slate-400">Доходность (ROI)</div>
+                    <div className="text-2xl font-bold font-mono mt-1">
+                      <span className={roi >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                        {roi >= 0 ? `+${roi}%` : `${roi}%`}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Оборот: {(resolvedCount * 1000).toLocaleString('ru-RU')} ₽
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div className="text-[11px] text-slate-400">Всего сигналов</div>
+                    <div className="text-2xl font-bold font-mono mt-1 text-white">
+                      {totalCount}
+                      <span className="text-xs font-normal text-slate-500 ml-1.5 font-sans">
+                        ({pendingCount} в игре)
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {refundsCount > 0 ? `${refundsCount} возвратов • ` : ''}Авто-фиксация
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-2.5 rounded-xl">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <button
+                      onClick={() => setSignalOutcomeFilter('ALL')}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        signalOutcomeFilter === 'ALL'
+                          ? 'bg-slate-800 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Все ({totalCount})
+                    </button>
+                    <button
+                      onClick={() => setSignalOutcomeFilter('WIN')}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        signalOutcomeFilter === 'WIN'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      ✅ Зашли ({winsCount})
+                    </button>
+                    <button
+                      onClick={() => setSignalOutcomeFilter('LOSS')}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        signalOutcomeFilter === 'LOSS'
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      ❌ Не зашли ({lossesCount})
+                    </button>
+                    <button
+                      onClick={() => setSignalOutcomeFilter('PENDING')}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        signalOutcomeFilter === 'PENDING'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      ⏳ В игре ({pendingCount})
+                    </button>
+                  </div>
+
+                  <div className="relative min-w-[220px]">
+                    <Search className="h-3.5 w-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Поиск по матчу или стратегии..."
+                      value={signalSearchQuery}
+                      onChange={(e) => setSignalSearchQuery(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Signals Cards Feed */}
+              {filteredSignalsList.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center space-y-3">
+                  <Bell className="h-8 w-8 text-slate-600 mx-auto" />
+                  <p className="text-sm text-slate-400">Нет сигналов по выбранным критериям фильтра.</p>
+                  <button
+                    onClick={triggerTestSignal}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                  >
+                    Сгенерировать сигнал
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredSignalsList.map((sig) => (
+                    <div
+                      key={sig.id}
+                      className="bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded-xl p-4 space-y-3 transition"
+                    >
+                      {/* Top row: match minute, country, league, timestamp, telegram */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold font-mono">
+                            {sig.minute}'
+                          </span>
+                          <span className="font-semibold text-white">
+                            {sig.country} • {sig.league}
+                          </span>
+                          <span className="text-slate-500 font-mono text-[11px]">
+                            {sig.timestamp}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2.5 py-0.5 rounded flex items-center gap-1.5 font-medium border ${
+                              sig.sentToTelegram
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            <Send className="h-3 w-3" />
+                            {sig.telegramStatusText || (sig.sentToTelegram ? 'Отправлено в TG' : 'Локально')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Match title and market */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
+                        <div>
+                          <div className="text-sm font-bold text-white flex items-center gap-2">
+                            <span>{sig.matchName}</span>
+                            <span className="font-mono text-sky-400">({sig.score})</span>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                            <span className="text-slate-500">Стратегия:</span>
+                            <span className="text-slate-300 font-medium">{sig.ruleName}</span>
+                            {sig.marketSuggestion && (
+                              <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[11px] font-medium">
+                                🎯 {sig.marketSuggestion}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Interactive Outcome Marker */}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className="text-[10px] text-slate-500">Коэффициент:</div>
+                            <div className="font-mono font-bold text-amber-300 text-sm">
+                              {sig.odds?.toFixed(2) || '1.85'}
+                            </div>
+                          </div>
+
+                          <div className="h-7 w-px bg-slate-800 mx-1" />
+
+                          {/* Outcome Status Badge */}
+                          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => updateSignalOutcome(sig.id, 'WIN')}
+                              title="Отметить как выигранную ставку"
+                              className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${
+                                sig.outcome === 'WIN'
+                                  ? 'bg-emerald-500 text-slate-950 shadow'
+                                  : 'text-slate-400 hover:text-emerald-400'
+                              }`}
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              Зашел
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSignalOutcome(sig.id, 'LOSS')}
+                              title="Отметить как проигранную ставку"
+                              className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${
+                                sig.outcome === 'LOSS'
+                                  ? 'bg-rose-500 text-white shadow'
+                                  : 'text-slate-400 hover:text-rose-400'
+                              }`}
+                            >
+                              <XCircle className="h-3 w-3" />
+                              Минус
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSignalOutcome(sig.id, 'REFUND')}
+                              title="Возврат ставки (кэф 1.0)"
+                              className={`px-2 py-1 rounded text-xs font-semibold transition ${
+                                sig.outcome === 'REFUND'
+                                  ? 'bg-slate-700 text-white'
+                                  : 'text-slate-500 hover:text-slate-300'
+                              }`}
+                            >
+                              Возврат
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSignalOutcome(sig.id, 'PENDING')}
+                              title="Сбросить статус в ожидание"
+                              className={`px-2 py-1 rounded text-xs font-semibold transition ${
+                                sig.outcome === 'PENDING'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'text-slate-500 hover:text-amber-400'
+                              }`}
+                            >
+                              В игре
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Profit and Resolution Note */}
+                      <div className="flex items-center justify-between text-xs bg-slate-950/70 px-3 py-2 rounded-lg border border-slate-800/80">
+                        <div className="text-slate-400">
+                          {sig.resolutionNote ? (
+                            <span>📌 {sig.resolutionNote}</span>
+                          ) : sig.outcome === 'WIN' ? (
+                            <span className="text-emerald-400">Ставка рассчитана как выигрышная</span>
+                          ) : sig.outcome === 'LOSS' ? (
+                            <span className="text-rose-400">Ставка не зашла</span>
+                          ) : (
+                            <span className="text-amber-400/80">Матч продолжается / ожидает расчета</span>
+                          )}
+                        </div>
+
+                        <div className="font-mono font-bold text-xs flex items-center gap-2">
+                          <span className="text-slate-500 font-sans font-normal text-[11px]">Результат:</span>
+                          <span
+                            className={
+                              sig.profit && sig.profit > 0
+                                ? 'text-emerald-400'
+                                : sig.profit && sig.profit < 0
+                                ? 'text-rose-400'
+                                : 'text-slate-400'
+                            }
+                          >
+                            {sig.profit !== undefined ? (
+                              <>
+                                {sig.profit > 0 ? `+${sig.profit}` : sig.profit} ₽ (
+                                {sig.profit > 0 ? `+${(sig.profit / 1000).toFixed(2)}` : (sig.profit / 1000).toFixed(2)} фл.)
+                              </>
+                            ) : (
+                              'В расчете...'
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expandable message payload */}
+                      <details className="text-xs group">
+                        <summary className="cursor-pointer text-slate-500 hover:text-slate-400 select-none flex items-center gap-1 text-[11px]">
+                          <span>Показать текст уведомления</span>
+                        </summary>
+                        <div className="mt-2 text-slate-400 font-mono bg-slate-950 p-3 rounded-lg whitespace-pre-line border border-slate-800/80">
+                          {sig.message}
+                        </div>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Tab 4: Backtesting & ROI Laboratory */}
+        {activeTab === 'backtest' && (
+          <BacktestingView
+            filters={filters}
+            onSelectFilterToEdit={(rule) => {
+              setEditingFilter(rule);
+              setIsFilterModalOpen(true);
+            }}
+          />
         )}
 
-        {/* Tab 4: Telegram Settings & Preview */}
+        {/* Tab 5: Telegram Settings & Preview */}
         {activeTab === 'telegram' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
