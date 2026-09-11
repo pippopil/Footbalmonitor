@@ -78,40 +78,164 @@ def evaluate_rule(rule: Dict, match: Dict, stats: Dict, odds: Dict, glicko: Dict
     else:
         return False
 
+def check_static_conditions(f: Dict, match: Dict, stats: Dict, odds: Dict, glicko: Dict,
+                            h2h_data: Dict = None, home_recent_agg: Dict = None, away_recent_agg: Dict = None) -> bool:
+    """Проверяет все статические поля фильтра. Возвращает True, если все условия выполнены."""
+    # Убеждаемся, что odds — словарь (исправляет ошибку 'list' object has no attribute 'get')
+    if not isinstance(odds, dict):
+        odds = {}
+
+    # Время матча
+    minute = match.get('minute', 0)
+    if not (f['match_time_min'] <= minute <= f['match_time_max']):
+        return False
+
+    # Общая статистика
+    home_goals = stats.get('goals', {}).get('home', 0)
+    away_goals = stats.get('goals', {}).get('away', 0)
+    total_goals = home_goals + away_goals
+    if not (f['total_goals_min'] <= total_goals <= f['total_goals_max']):
+        return False
+
+    home_corners = stats.get('corners', {}).get('home', 0)
+    away_corners = stats.get('corners', {}).get('away', 0)
+    total_corners = home_corners + away_corners
+    if not (f['total_corners_min'] <= total_corners <= f['total_corners_max']):
+        return False
+
+    home_shots = stats.get('shots', {}).get('home', 0)
+    away_shots = stats.get('shots', {}).get('away', 0)
+    total_shots = home_shots + away_shots
+    if not (f['total_shots_min'] <= total_shots <= f['total_shots_max']):
+        return False
+
+    home_sot = stats.get('shots_on_target', {}).get('home', 0)
+    away_sot = stats.get('shots_on_target', {}).get('away', 0)
+    total_sot = home_sot + away_sot
+    if not (f['total_sot_min'] <= total_sot <= f['total_sot_max']):
+        return False
+
+    home_yellow = stats.get('yellow_cards', {}).get('home', 0)
+    away_yellow = stats.get('yellow_cards', {}).get('away', 0)
+    total_yellow = home_yellow + away_yellow
+    if not (f['total_yellow_min'] <= total_yellow <= f['total_yellow_max']):
+        return False
+
+    # Индивидуальные показатели
+    if not (f['home_goals_min'] <= home_goals <= f['home_goals_max']):
+        return False
+    if not (f['away_goals_min'] <= away_goals <= f['away_goals_max']):
+        return False
+    if not (f['home_corners_min'] <= home_corners <= f['home_corners_max']):
+        return False
+    if not (f['away_corners_min'] <= away_corners <= f['away_corners_max']):
+        return False
+    if not (f['home_shots_min'] <= home_shots <= f['home_shots_max']):
+        return False
+    if not (f['away_shots_min'] <= away_shots <= f['away_shots_max']):
+        return False
+    if not (f['home_sot_min'] <= home_sot <= f['home_sot_max']):
+        return False
+    if not (f['away_sot_min'] <= away_sot <= f['away_sot_max']):
+        return False
+    if not (f['home_yellow_min'] <= home_yellow <= f['home_yellow_max']):
+        return False
+    if not (f['away_yellow_min'] <= away_yellow <= f['away_yellow_max']):
+        return False
+
+    # Коэффициенты
+    p1 = odds.get('p1', 0.0)
+    p2 = odds.get('p2', 0.0)
+    draw = odds.get('draw', 0.0)
+    over25 = odds.get('total_over_2_5', 0.0)
+    if not (f['odds_p1_min'] <= p1 <= f['odds_p1_max']):
+        return False
+    if not (f['odds_p2_min'] <= p2 <= f['odds_p2_max']):
+        return False
+    if not (f['odds_draw_min'] <= draw <= f['odds_draw_max']):
+        return False
+    if not (f['odds_total_over_2_5_min'] <= over25 <= f['odds_total_over_2_5_max']):
+        return False
+
+    # Glicko
+    if glicko is not None:
+        home_prob = glicko.get('home_prob', 0)
+        draw_prob = glicko.get('draw_prob', 0)
+        away_prob = glicko.get('away_prob', 0)
+        if not (f['glicko_home_min'] <= home_prob <= f['glicko_home_max']):
+            return False
+        if not (f['glicko_away_min'] <= away_prob <= f['glicko_away_max']):
+            return False
+        if not (f['glicko_draw_min'] <= draw_prob <= f['glicko_draw_max']):
+            return False
+
+    # Исторические данные
+    if h2h_data is not None:
+        avg_goals = h2h_data.get('avg_goals', 0)
+        if not (f['h2h_avg_goals_min'] <= avg_goals <= f['h2h_avg_goals_max']):
+            return False
+    if home_recent_agg is not None:
+        avg_home = home_recent_agg.get('avg_goals', 0)
+        if not (f['home_recent_goals_min'] <= avg_home <= f['home_recent_goals_max']):
+            return False
+    if away_recent_agg is not None:
+        avg_away = away_recent_agg.get('avg_goals', 0)
+        if not (f['away_recent_goals_min'] <= avg_away <= f['away_recent_goals_max']):
+            return False
+
+    return True
+
 def check_filters(match: Dict, stats: Dict, odds: Dict, filters: List[Dict],
                   h2h_data: Dict = None, home_recent_agg: Dict = None, away_recent_agg: Dict = None,
                   glicko: Dict = None,
                   home_recent_matches: List[Dict] = None,
                   away_recent_matches: List[Dict] = None) -> List[Dict]:
+    """
+    Проверяет матч по списку фильтров.
+    Возвращает список словарей: { 'filter': filter, 'conditions': условия, 'glicko': glicko }
+    """
     triggered = []
     for f in filters:
+        # 1. Проверка статических полей
+        if not check_static_conditions(f, match, stats, odds, glicko, h2h_data, home_recent_agg, away_recent_agg):
+            continue
+
+        # 2. Проверка комбинированных правил (если есть)
         rules_json = f.get('rules', '[]')
         try:
             rules = json.loads(rules_json)
         except:
             rules = []
         logic = f.get('rule_logic', 'AND')
-        if not rules:
-            continue
-        results = []
-        for rule in rules:
-            res = evaluate_rule(rule, match, stats, odds, glicko,
-                               home_recent_matches, away_recent_matches)
-            results.append(res)
-        if logic == 'AND':
-            if all(results):
-                triggered.append({
-                    'filter': f,
-                    'conditions': [str(r) for r in rules],
-                    'glicko': glicko
-                })
-        elif logic == 'OR':
-            if any(results):
-                triggered.append({
-                    'filter': f,
-                    'conditions': [str(r) for r in rules],
-                    'glicko': glicko
-                })
+
+        if rules:
+            results = []
+            for rule in rules:
+                res = evaluate_rule(rule, match, stats, odds, glicko,
+                                   home_recent_matches, away_recent_matches)
+                results.append(res)
+            if logic == 'AND':
+                if all(results):
+                    triggered.append({
+                        'filter': f,
+                        'conditions': [str(r) for r in rules],
+                        'glicko': glicko
+                    })
+            elif logic == 'OR':
+                if any(results):
+                    triggered.append({
+                        'filter': f,
+                        'conditions': [str(r) for r in rules],
+                        'glicko': glicko
+                    })
+        else:
+            # Если правил нет, фильтр срабатывает только по статике
+            triggered.append({
+                'filter': f,
+                'conditions': [],
+                'glicko': glicko
+            })
+
     return triggered
 
 def check_single_filter(match: Dict, stats: Dict, odds: Dict, filter: Dict,
@@ -119,20 +243,12 @@ def check_single_filter(match: Dict, stats: Dict, odds: Dict, filter: Dict,
                         glicko: Dict = None,
                         home_recent_matches: List[Dict] = None,
                         away_recent_matches: List[Dict] = None) -> bool:
+    """Проверяет один фильтр, возвращает True, если все условия выполнены."""
     result = check_filters(match, stats, odds, [filter], h2h_data, home_recent_agg, away_recent_agg,
                            glicko, home_recent_matches, away_recent_matches)
     return len(result) > 0
 
 def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
-    """
-    Определяет фактический исход матча по его детальным данным.
-    Поддерживает:
-      - Исходы матча: home_win, away_win, draw
-      - Тотал голов: total_over_0_5, total_over_2_5, total_under_2_5
-      - Тотал угловых: corners_over_1_5, corners_over_2_5, ... до corners_over_15_5
-      - Тотал ЖК: yellow_cards_over_1_5, yellow_cards_over_2_5, yellow_cards_over_3_5
-      - Гол в первом тайме (заглушка): first_half_over_0_5
-    """
     stats = match_details.get('stats', {})
     home_goals = stats.get('goals', {}).get('home', 0)
     away_goals = stats.get('goals', {}).get('away', 0)
@@ -140,7 +256,6 @@ def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
     total_corners = stats.get('corners', {}).get('total', 0)
     total_yellow = stats.get('yellow_cards', {}).get('total', 0)
 
-    # Исходы матча
     if expected_outcome in ['home_win', 'away_win', 'draw']:
         if home_goals > away_goals:
             return 'home_win'
@@ -149,7 +264,6 @@ def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
         else:
             return 'draw'
 
-    # Тотал голов
     if expected_outcome == 'total_over_2_5':
         return 'over' if total_goals > 2.5 else 'under'
     if expected_outcome == 'total_under_2_5':
@@ -162,7 +276,6 @@ def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
         except:
             return 'unknown'
 
-    # Угловые
     if expected_outcome.startswith('corners_over_'):
         threshold_str = expected_outcome.replace('corners_over_', '').replace('_', '.')
         try:
@@ -171,7 +284,6 @@ def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
         except:
             return 'unknown'
 
-    # ЖК
     if expected_outcome.startswith('yellow_cards_over_'):
         threshold_str = expected_outcome.replace('yellow_cards_over_', '').replace('_', '.')
         try:
@@ -180,25 +292,16 @@ def determine_actual_outcome(match_details: Dict, expected_outcome: str) -> str:
         except:
             return 'unknown'
 
-    # Гол в первом тайме (заглушка)
     if expected_outcome == 'first_half_over_0_5':
         return 'unknown'
 
     return 'unknown'
 
 def is_outcome_success(actual: str, expected: str) -> bool:
-    """
-    Сравнивает фактический исход с ожидаемым для всех типов.
-    Для тоталов (over/under) сравнивает строки 'over'/'under'.
-    Для исходов матча сравнивает строки.
-    """
-    # Нормализация для тоталов
     if expected.startswith('total_') or expected.startswith('corners_') or expected.startswith('yellow_'):
-        # Определяем, что ожидается: 'over' или 'under'
         if 'over' in expected:
             expected_norm = 'over'
         else:
             expected_norm = 'under'
         return actual == expected_norm
-    # Исходы матча
     return actual == expected

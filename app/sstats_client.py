@@ -1,10 +1,31 @@
 import requests
 import time
 import logging
+from functools import wraps
 from typing import Dict, List, Optional
-from app.config import SSTATS_API_KEY, SSTATS_BASE_URL
+
+from app.config import SSTATS_API_KEY, SSTATS_BASE_URL, RETRY_ATTEMPTS, RETRY_DELAY
 
 logger = logging.getLogger(__name__)
+
+def retry(max_attempts=RETRY_ATTEMPTS, delay=RETRY_DELAY, backoff=2):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_attempts - 1:
+                        logger.error(f"Retry failed for {func.__name__}: {e}")
+                        raise
+                    logger.warning(f"Retry {attempt+1}/{max_attempts} for {func.__name__}: {e}")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            return None
+        return wrapper
+    return decorator
 
 class SStatsClient:
     def __init__(self, api_key: Optional[str] = None, base_url: str = SSTATS_BASE_URL):
@@ -12,12 +33,13 @@ class SStatsClient:
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
         self.last_request_time = 0
-        self.min_interval = 1.0  # уменьшили до 1 секунды
+        self.min_interval = 2.0
 
-    def _get(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
+    @retry()
+    def _get(self, endpoint: str, params: Optional[Dict] = None, use_key: bool = True) -> Dict:
         if params is None:
             params = {}
-        if self.api_key:
+        if use_key and self.api_key:
             params['apikey'] = self.api_key
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         now = time.time()
@@ -29,195 +51,195 @@ class SStatsClient:
             resp = self.session.get(url, params=params, timeout=15)
             resp.raise_for_status()
             data = resp.json()
-            if data.get('status') == 'OK':
-                return data.get('data', {}) if isinstance(data.get('data'), dict) else data.get('data', [])
+            status = data.get('status', '')
+            if status.lower() == 'ok':
+                return data  # возвращаем весь ответ
             else:
-                logger.error(f"API error: {data.get('message', 'Unknown error')}")
+                logger.error(f"SStats API error: {data.get('message', 'Unknown error')}")
                 return {}
-        except Exception as e:
-            logger.error(f"Request failed: {e}")
-            return {}
+        except requests.exceptions.RequestException as e:
+            if use_key and hasattr(e, 'response') and e.response is not None and e.response.status_code == 400:
+                logger.warning("Ошибка 400 с ключом, пробуем без ключа")
+                return self._get(endpoint, params, use_key=False)
+            logger.error(f"SStats request failed: {e}")
+            raise
+        except ValueError as e:
+            logger.error(f"SStats JSON decode error: {e}")
+            raise
+
+    # ===== Основные методы =====
+
+    def get_leagues(self) -> List[Dict]:
+        return self._get("leagues")
 
     def get_live_matches(self) -> List[Dict]:
-        return self._get("games/list", {"today": "true"})
-
-    def get_match_details(self, match_id: int) -> Dict:
-        data = self._get(f"games/{match_id}")
-        if not data:
-            logger.warning(f"Нет данных для матча {match_id}")
-            return self._empty_stats_dict()
-
-        game = data.get('game', {})
-        events = data.get('events', [])
-        stats_from_api = data.get('statistics')
-
-        def to_int(val):
-            return int(val) if val is not None else 0
-
-        if stats_from_api and isinstance(stats_from_api, dict):
-            logger.info(f"Матч {match_id}: статистика получена от API")
-            return {
+        raw = self._get("games/list", {"today": "true"})
+        matches = raw.get('data', []) if isinstance(raw, dict) else []
+        result = []
+        for m in matches:
+            match = {
+                'id': m.get('id'),
+                'homeTeam': {
+                    'id': m.get('homeTeam', {}).get('id'),
+                    'name': m.get('homeTeam', {}).get('name')
+                },
+                'awayTeam': {
+                    'id': m.get('awayTeam', {}).get('id'),
+                    'name': m.get('awayTeam', {}).get('name')
+                },
+                'minute': m.get('elapsed', 0) if m.get('elapsed') is not None else 0,
                 'goals': {
-                    'home': to_int(game.get('homeResult')),
-                    'away': to_int(game.get('awayResult'))
+                    'home': m.get('homeResult', 0) if m.get('homeResult') is not None else 0,
+                    'away': m.get('awayResult', 0) if m.get('awayResult') is not None else 0
                 },
-                'corners': {
-                    'home': to_int(stats_from_api.get('cornerKicksHome')),
-                    'away': to_int(stats_from_api.get('cornerKicksAway'))
-                },
-                'shots': {
-                    'home': to_int(stats_from_api.get('totalShotsHome')),
-                    'away': to_int(stats_from_api.get('totalShotsAway'))
-                },
-                'shots_on_target': {
-                    'home': to_int(stats_from_api.get('shotsOnGoalHome')),
-                    'away': to_int(stats_from_api.get('shotsOnGoalAway'))
-                },
-                'yellow_cards': {
-                    'home': to_int(stats_from_api.get('yellowCardsHome')),
-                    'away': to_int(stats_from_api.get('yellowCardsAway'))
+                'status': m.get('status', 0),
+                'statusName': m.get('statusName', ''),
+                'league': {
+                    'id': m.get('league', {}).get('id'),
+                    'name': m.get('league', {}).get('name')
                 }
             }
+            result.append(match)
+        return result
 
-        logger.info(f"Матч {match_id}: статистика отсутствует, собираем из game/events")
-        home_goals = to_int(game.get('homeResult'))
-        away_goals = to_int(game.get('awayResult'))
+    def get_match_details(self, match_id: int) -> Dict:
+        raw = self._get(f"games/{match_id}")
+        if not raw or not isinstance(raw, dict):
+            return {}
 
-        home_yellow = 0
-        away_yellow = 0
-        home_id = game.get('homeTeam', {}).get('id')
-        away_id = game.get('awayTeam', {}).get('id')
-        for ev in events:
-            if ev.get('type') == 2:  # Yellow Card
-                team_id = ev.get('teamId')
-                if team_id == home_id:
-                    home_yellow += 1
-                elif team_id == away_id:
-                    away_yellow += 1
+        data = raw.get('data', {})
+        game = data.get('game', {})
+        stats_data = data.get('statistics', {})  # статистика может быть на этом уровне
 
-        return {
-            'goals': {'home': home_goals, 'away': away_goals},
-            'corners': {'home': 0, 'away': 0},
-            'shots': {'home': 0, 'away': 0},
-            'shots_on_target': {'home': 0, 'away': 0},
-            'yellow_cards': {'home': home_yellow, 'away': away_yellow},
-        }
+        # Если статистика есть в stats_data, используем её
+        if stats_data and isinstance(stats_data, dict):
+            home_goals = game.get('homeResult', 0) if game.get('homeResult') is not None else 0
+            away_goals = game.get('awayResult', 0) if game.get('awayResult') is not None else 0
+            stats = {
+                'goals': {'home': home_goals, 'away': away_goals, 'total': home_goals + away_goals},
+                'corners': {
+                    'home': stats_data.get('cornerKicksHome', 0),
+                    'away': stats_data.get('cornerKicksAway', 0),
+                    'total': stats_data.get('cornerKicksHome', 0) + stats_data.get('cornerKicksAway', 0)
+                },
+                'shots': {
+                    'home': stats_data.get('totalShotsHome', 0),
+                    'away': stats_data.get('totalShotsAway', 0),
+                    'total': stats_data.get('totalShotsHome', 0) + stats_data.get('totalShotsAway', 0)
+                },
+                'shots_on_target': {
+                    'home': stats_data.get('shotsOnGoalHome', 0),
+                    'away': stats_data.get('shotsOnGoalAway', 0),
+                    'total': stats_data.get('shotsOnGoalHome', 0) + stats_data.get('shotsOnGoalAway', 0)
+                },
+                'yellow_cards': {
+                    'home': stats_data.get('yellowCardsHome', 0),
+                    'away': stats_data.get('yellowCardsAway', 0),
+                    'total': stats_data.get('yellowCardsHome', 0) + stats_data.get('yellowCardsAway', 0)
+                }
+            }
+            return stats
 
-    def _empty_stats_dict(self) -> Dict:
-        return {
-            'goals': {'home': 0, 'away': 0},
-            'corners': {'home': 0, 'away': 0},
-            'shots': {'home': 0, 'away': 0},
-            'shots_on_target': {'home': 0, 'away': 0},
-            'yellow_cards': {'home': 0, 'away': 0},
-        }
+        # Если stats_data нет, пытаемся из game (запасной вариант)
+        stats = {}
+        home_goals = game.get('homeResult', 0) if game.get('homeResult') is not None else 0
+        away_goals = game.get('awayResult', 0) if game.get('awayResult') is not None else 0
+        stats['goals'] = {'home': home_goals, 'away': away_goals, 'total': home_goals + away_goals}
+
+        # Пытаемся найти вложенную статистику внутри game (если она там)
+        home_corners = game.get('cornerKicksHome', 0) or 0
+        away_corners = game.get('cornerKicksAway', 0) or 0
+        stats['corners'] = {'home': home_corners, 'away': away_corners, 'total': home_corners + away_corners}
+
+        home_shots = game.get('totalShotsHome', 0) or 0
+        away_shots = game.get('totalShotsAway', 0) or 0
+        stats['shots'] = {'home': home_shots, 'away': away_shots, 'total': home_shots + away_shots}
+
+        home_sot = game.get('shotsOnGoalHome', 0) or 0
+        away_sot = game.get('shotsOnGoalAway', 0) or 0
+        stats['shots_on_target'] = {'home': home_sot, 'away': away_sot, 'total': home_sot + away_sot}
+
+        home_yellow = game.get('yellowCardsHome', 0) or 0
+        away_yellow = game.get('yellowCardsAway', 0) or 0
+        stats['yellow_cards'] = {'home': home_yellow, 'away': away_yellow, 'total': home_yellow + away_yellow}
+
+        return stats
 
     def get_match_odds(self, match_id: int, live: bool = False) -> Dict:
-        endpoint = f"odds/live/{match_id}" if live else f"odds/{match_id}"
-        data = self._get(endpoint)
-        if not data:
-            return {'p1': 0.0, 'draw': 0.0, 'p2': 0.0, 'total_over_2_5': 0.0}
-
-        if isinstance(data, list):
-            result = {'p1': 0.0, 'draw': 0.0, 'p2': 0.0, 'total_over_2_5': 0.0}
-            for market in data:
-                market_id = market.get('marketId')
-                odds_list = market.get('odds', [])
-                if market_id == 1:
-                    for odd in odds_list:
-                        name = odd.get('name')
-                        value = odd.get('value', 0.0)
-                        if name == 'Home':
-                            result['p1'] = value
-                        elif name == 'Draw':
-                            result['draw'] = value
-                        elif name == 'Away':
-                            result['p2'] = value
-                elif market_id == 5:
-                    for odd in odds_list:
-                        name = odd.get('name')
-                        value = odd.get('value', 0.0)
-                        if name == 'Over 2.5' or name == 'Over 2.5 Goals':
-                            result['total_over_2_5'] = value
-            return result
-        else:
-            return {
-                'p1': data.get('p1', 0.0),
-                'draw': data.get('draw', 0.0),
-                'p2': data.get('p2', 0.0),
-                'total_over_2_5': data.get('total_over_2_5', 0.0)
-            }
+        raw = self._get(f"games/{match_id}")
+        game = raw.get('data', {}).get('game', {}) if isinstance(raw, dict) else {}
+        if not game:
+            return {}
+        odds_list = game.get('odds', [])
+        odds_dict = {}
+        for market in odds_list:
+            market_id = market.get('marketId')
+            if market_id == 1:
+                for odd in market.get('odds', []):
+                    name = odd.get('name', '').lower()
+                    if 'home' in name:
+                        odds_dict['p1'] = odd.get('value')
+                    elif 'away' in name:
+                        odds_dict['p2'] = odd.get('value')
+                    elif 'draw' in name:
+                        odds_dict['draw'] = odd.get('value')
+            elif market_id == 5:
+                for odd in market.get('odds', []):
+                    name = odd.get('name', '').lower()
+                    if 'over 2.5' in name or 'over 2,5' in name:
+                        odds_dict['total_over_2_5'] = odd.get('value')
+        odds_dict.setdefault('p1', 0.0)
+        odds_dict.setdefault('p2', 0.0)
+        odds_dict.setdefault('draw', 0.0)
+        odds_dict.setdefault('total_over_2_5', 0.0)
+        return odds_dict
 
     def get_glicko(self, match_id: int) -> Dict:
-        return self._get(f"games/glicko/{match_id}")
+        # Glicko не поддерживается SStats
+        return {}
+
+    # ===== Исторические данные (заглушки) =====
 
     def get_head_to_head(self, team1_id: int, team2_id: int, limit: int = 5) -> Dict:
-        params = {"team1": team1_id, "team2": team2_id, "ended": "true", "limit": limit}
-        matches = self._get("games/list", params)
-        if not matches:
-            return self._empty_stats_avg()
-
-        total_goals = total_corners = total_shots = total_sot = total_yellow = 0
-        count = 0
-        for match in matches[:limit]:
-            match_id = match.get('id')
-            if not match_id:
-                continue
-            details = self.get_match_details(match_id)
-            if not details:
-                continue
-            total_goals += details['goals']['home'] + details['goals']['away']
-            total_corners += details['corners']['home'] + details['corners']['away']
-            total_shots += details['shots']['home'] + details['shots']['away']
-            total_sot += details['shots_on_target']['home'] + details['shots_on_target']['away']
-            total_yellow += details['yellow_cards']['home'] + details['yellow_cards']['away']
-            count += 1
-            # убрали time.sleep(0.5) для скорости
-        if count == 0:
-            return self._empty_stats_avg()
-        return {
-            'matches_count': count,
-            'avg_goals': total_goals / count,
-            'avg_corners': total_corners / count,
-            'avg_shots': total_shots / count,
-            'avg_sot': total_sot / count,
-            'avg_yellow': total_yellow / count,
-        }
+        return self._empty_stats()
 
     def get_team_recent_matches(self, team_id: int, venue: str = 'all', limit: int = 5) -> Dict:
-        params = {"team": team_id, "ended": "true", "limit": limit}
-        matches = self._get("games/list", params)
-        if not matches:
-            return self._empty_stats_avg()
+        return self._empty_stats()
 
-        total_goals = total_corners = total_shots = total_sot = total_yellow = 0
-        count = 0
-        for match in matches[:limit]:
-            match_id = match.get('id')
-            if not match_id:
-                continue
-            details = self.get_match_details(match_id)
-            if not details:
-                continue
-            total_goals += details['goals']['home'] + details['goals']['away']
-            total_corners += details['corners']['home'] + details['corners']['away']
-            total_shots += details['shots']['home'] + details['shots']['away']
-            total_sot += details['shots_on_target']['home'] + details['shots_on_target']['away']
-            total_yellow += details['yellow_cards']['home'] + details['yellow_cards']['away']
-            count += 1
-            # убрали time.sleep(0.5)
-        if count == 0:
-            return self._empty_stats_avg()
-        return {
-            'matches_count': count,
-            'avg_goals': total_goals / count,
-            'avg_corners': total_corners / count,
-            'avg_shots': total_shots / count,
-            'avg_sot': total_sot / count,
-            'avg_yellow': total_yellow / count,
-        }
+    def get_team_recent_matches_full(self, team_id: int, limit: int = 5, venue: str = 'all') -> List[Dict]:
+        return []
 
-    def _empty_stats_avg(self) -> Dict:
+    def get_matches_by_date(self, from_date: str, to_date: str, limit: int = 100) -> List[Dict]:
+        raw = self._get("games/list", {"from": from_date, "to": to_date, "limit": limit})
+        matches = raw.get('data', []) if isinstance(raw, dict) else []
+        result = []
+        for m in matches:
+            match = {
+                'id': m.get('id'),
+                'homeTeam': {
+                    'id': m.get('homeTeam', {}).get('id'),
+                    'name': m.get('homeTeam', {}).get('name')
+                },
+                'awayTeam': {
+                    'id': m.get('awayTeam', {}).get('id'),
+                    'name': m.get('awayTeam', {}).get('name')
+                },
+                'minute': m.get('elapsed', 0) if m.get('elapsed') is not None else 0,
+                'goals': {
+                    'home': m.get('homeResult', 0) if m.get('homeResult') is not None else 0,
+                    'away': m.get('awayResult', 0) if m.get('awayResult') is not None else 0
+                },
+                'status': m.get('status', 0),
+                'statusName': m.get('statusName', ''),
+                'league': {
+                    'id': m.get('league', {}).get('id'),
+                    'name': m.get('league', {}).get('name')
+                }
+            }
+            result.append(match)
+        return result
+
+    def _empty_stats(self) -> Dict:
         return {
             'matches_count': 0,
             'avg_goals': 0.0,
@@ -226,20 +248,3 @@ class SStatsClient:
             'avg_sot': 0.0,
             'avg_yellow': 0.0,
         }
-
-    def get_leagues(self) -> List[Dict]:
-        return self._get("leagues")
-
-    def get_matches_by_league(self, league_id: int, year: int, limit: int = 100) -> List[Dict]:
-        return self._get("games/list", {"leagueid": league_id, "year": year, "limit": limit})
-
-    def get_matches_by_date(self, from_date: str, to_date: str, limit: int = 100) -> List[Dict]:
-        return self._get("games/list", {"from": from_date, "to": to_date, "limit": limit})
-
-    def get_team_matches(self, team_id: int, from_date: Optional[str] = None, to_date: Optional[str] = None, limit: int = 50) -> List[Dict]:
-        params = {"team": team_id, "limit": limit}
-        if from_date:
-            params["from"] = from_date
-        if to_date:
-            params["to"] = to_date
-        return self._get("games/list", params)

@@ -33,6 +33,12 @@
         <div class="tab-content mt-3">
             <!-- Вкладка 1: Основное -->
             <div class="tab-pane fade show active" id="main" role="tabpanel">
+                <!-- НОВОЕ ПОЛЕ: Название фильтра -->
+                <div class="mb-3">
+                    <label for="name" class="form-label">Название фильтра</label>
+                    <input type="text" class="form-control" name="name" value="{{ filter.name if filter else '' }}" placeholder="Например: Тотал > 2.5">
+                </div>
+
                 <div class="mb-3">
                     <label for="expected_outcome" class="form-label">Ожидаемый исход (для статистики)</label>
                     <select class="form-select" name="expected_outcome" id="expected_outcome">
@@ -62,7 +68,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="rule_logic" class="form-label">Логика объединения правил</label>
-                    <select class="form-select" name="rule_logic" id="rule_logic">
+                    <select class="form-select" name="rule_logic">
                         <option value="AND">AND (все правила)</option>
                         <option value="OR">OR (хотя бы одно)</option>
                     </select>
@@ -184,15 +190,19 @@
                 </div>
             </div>
 
-            <!-- Вкладка 4: Правила (конструктор) -->
+            <!-- Вкладка 4: Правила -->
             <div class="tab-pane fade" id="rules" role="tabpanel">
                 <div class="mb-3">
-                    <label class="form-label">Правила</label>
-                    <div id="rules-container">
-                        <!-- Сюда будут добавляться строки правил -->
-                    </div>
-                    <button type="button" class="btn btn-sm btn-success mt-2" onclick="addRule()">➕ Добавить правило</button>
-                    <input type="hidden" id="rules-json" name="rules" value="[]">
+                    <label for="rules" class="form-label">Правила (JSON)</label>
+                    <textarea class="form-control" name="rules" rows="8" id="rules-textarea">[
+    {"type":"stat","stat":"total_goals","comparison":"gte","value":3}
+]</textarea>
+                    <small class="text-muted">
+                        Формат: массив объектов. 
+                        <br>Для stat: {"type":"stat","stat":"total_goals","comparison":"gte","value":3}
+                        <br>Для trend: {"type":"trend","team":"home","stat":"total_goals","comparison":"gt","threshold":2.5,"matches":5,"required":4}
+                        <br>Доступные stat: minute, total_goals, home_goals, away_goals, total_corners, home_corners, away_corners, total_shots, home_shots, away_shots, total_sot, home_sot, away_sot, total_yellow, home_yellow, away_yellow, odds_p1, odds_p2, odds_draw, odds_total_over_2_5, glicko_home, glicko_away, glicko_draw.
+                    </small>
                 </div>
             </div>
 
@@ -238,263 +248,6 @@
         <a href="/?chat_id={{ chat_id }}" class="btn btn-secondary mt-4">Отмена</a>
     </form>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// ---- Конструктор правил ----
-let rules = [];
-
-// Доступные статистики для выбора
-const statOptions = [
-    'minute',
-    'total_goals', 'home_goals', 'away_goals',
-    'total_corners', 'home_corners', 'away_corners',
-    'total_shots', 'home_shots', 'away_shots',
-    'total_sot', 'home_sot', 'away_sot',
-    'total_yellow', 'home_yellow', 'away_yellow',
-    'odds_p1', 'odds_p2', 'odds_draw', 'odds_total_over_2_5',
-    'glicko_home', 'glicko_away', 'glicko_draw'
-];
-
-const comparisonOptions = [
-    {value: 'eq', label: '='},
-    {value: 'gt', label: '>'},
-    {value: 'lt', label: '<'},
-    {value: 'gte', label: '≥'},
-    {value: 'lte', label: '≤'}
-];
-
-function addRule(ruleData = null) {
-    const container = document.getElementById('rules-container');
-    const index = rules.length;
-
-    const row = document.createElement('div');
-    row.className = 'row g-2 mb-2 align-items-end';
-    row.dataset.index = index;
-
-    // Тип правила
-    const typeCol = document.createElement('div');
-    typeCol.className = 'col-auto';
-    const typeSelect = document.createElement('select');
-    typeSelect.className = 'form-select form-select-sm';
-    typeSelect.innerHTML = `
-        <option value="stat" ${ruleData && ruleData.type === 'stat' ? 'selected' : ''}>Статистика</option>
-        <option value="trend" ${ruleData && ruleData.type === 'trend' ? 'selected' : ''}>Тренд</option>
-    `;
-    typeSelect.onchange = function() { updateRuleFields(index); };
-    typeCol.appendChild(typeSelect);
-    row.appendChild(typeCol);
-
-    // Параметр stat
-    const statCol = document.createElement('div');
-    statCol.className = 'col-auto';
-    const statSelect = document.createElement('select');
-    statSelect.className = 'form-select form-select-sm stat-select';
-    statOptions.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
-        if (ruleData && ruleData.stat === s) opt.selected = true;
-        statSelect.appendChild(opt);
-    });
-    statCol.appendChild(statSelect);
-    row.appendChild(statCol);
-
-    // Оператор сравнения
-    const compCol = document.createElement('div');
-    compCol.className = 'col-auto';
-    const compSelect = document.createElement('select');
-    compSelect.className = 'form-select form-select-sm';
-    comparisonOptions.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.value;
-        opt.textContent = c.label;
-        if (ruleData && ruleData.comparison === c.value) opt.selected = true;
-        compSelect.appendChild(opt);
-    });
-    compCol.appendChild(compSelect);
-    row.appendChild(compCol);
-
-    // Значение / Порог
-    const valueCol = document.createElement('div');
-    valueCol.className = 'col-auto';
-    const valueInput = document.createElement('input');
-    valueInput.type = 'number';
-    valueInput.step = '0.01';
-    valueInput.className = 'form-control form-control-sm';
-    valueInput.placeholder = 'Значение';
-    valueInput.value = ruleData && ruleData.value !== undefined ? ruleData.value : (ruleData && ruleData.threshold !== undefined ? ruleData.threshold : '');
-    valueCol.appendChild(valueInput);
-    row.appendChild(valueCol);
-
-    // Дополнительные поля для тренда (показываются только если тип trend)
-    const extraCol = document.createElement('div');
-    extraCol.className = 'col-auto extra-fields';
-    extraCol.style.display = (ruleData && ruleData.type === 'trend') ? 'flex' : 'none';
-
-    // Команда
-    const teamSelect = document.createElement('select');
-    teamSelect.className = 'form-select form-select-sm';
-    teamSelect.innerHTML = `
-        <option value="home" ${ruleData && ruleData.team === 'home' ? 'selected' : ''}>Хозяева</option>
-        <option value="away" ${ruleData && ruleData.team === 'away' ? 'selected' : ''}>Гости</option>
-    `;
-    extraCol.appendChild(teamSelect);
-
-    // Количество матчей
-    const matchesInput = document.createElement('input');
-    matchesInput.type = 'number';
-    matchesInput.className = 'form-control form-control-sm';
-    matchesInput.placeholder = 'Матчей';
-    matchesInput.value = ruleData && ruleData.matches !== undefined ? ruleData.matches : 5;
-    extraCol.appendChild(matchesInput);
-
-    // Требуется совпадений
-    const requiredInput = document.createElement('input');
-    requiredInput.type = 'number';
-    requiredInput.className = 'form-control form-control-sm';
-    requiredInput.placeholder = 'Нужно';
-    requiredInput.value = ruleData && ruleData.required !== undefined ? ruleData.required : 4;
-    extraCol.appendChild(requiredInput);
-
-    row.appendChild(extraCol);
-
-    // Кнопка удаления
-    const delCol = document.createElement('div');
-    delCol.className = 'col-auto';
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'btn btn-danger btn-sm';
-    delBtn.textContent = '✕';
-    delBtn.onclick = function() { removeRule(index); };
-    delCol.appendChild(delBtn);
-    row.appendChild(delCol);
-
-    container.appendChild(row);
-
-    // Сохраняем правило
-    const rule = {
-        type: typeSelect.value,
-        stat: statSelect.value,
-        comparison: compSelect.value,
-        value: valueInput.value !== '' ? parseFloat(valueInput.value) : 0,
-        team: teamSelect.value,
-        matches: parseInt(matchesInput.value) || 5,
-        required: parseInt(requiredInput.value) || 4
-    };
-    rules.push(rule);
-    updateRulesJson();
-}
-
-function removeRule(index) {
-    rules.splice(index, 1);
-    renderRules();
-    updateRulesJson();
-}
-
-function updateRuleFields(index) {
-    const container = document.getElementById('rules-container');
-    const row = container.children[index];
-    const typeSelect = row.querySelector('select:first-child');
-    const extraDiv = row.querySelector('.extra-fields');
-    if (typeSelect.value === 'trend') {
-        extraDiv.style.display = 'flex';
-    } else {
-        extraDiv.style.display = 'none';
-    }
-    // Обновляем данные в массиве правил
-    updateRuleData(index);
-}
-
-function updateRuleData(index) {
-    const container = document.getElementById('rules-container');
-    const row = container.children[index];
-    const typeSelect = row.querySelector('select:first-child');
-    const statSelect = row.querySelector('.stat-select');
-    const compSelect = row.querySelectorAll('select')[2];
-    const valueInput = row.querySelector('input[type="number"]');
-    const teamSelect = row.querySelector('.extra-fields select');
-    const matchesInput = row.querySelector('.extra-fields input:not([type="hidden"])');
-    const requiredInput = row.querySelectorAll('.extra-fields input')[1];
-
-    if (!rules[index]) return;
-    rules[index].type = typeSelect.value;
-    rules[index].stat = statSelect.value;
-    rules[index].comparison = compSelect.value;
-    rules[index].value = valueInput.value !== '' ? parseFloat(valueInput.value) : 0;
-    if (typeSelect.value === 'trend') {
-        rules[index].team = teamSelect ? teamSelect.value : 'home';
-        rules[index].matches = matchesInput ? parseInt(matchesInput.value) || 5 : 5;
-        rules[index].required = requiredInput ? parseInt(requiredInput.value) || 4 : 4;
-    }
-    updateRulesJson();
-}
-
-function renderRules() {
-    const container = document.getElementById('rules-container');
-    container.innerHTML = '';
-    rules.forEach((rule, idx) => {
-        addRule(rule);
-        // Корректируем индексы: после добавления правила мы обновляем rules, но нам нужно синхронизировать
-        // Проще перестроить заново, но чтобы не было дублей, перестроим с нуля
-    });
-    // Т.к. addRule добавляет в rules, у нас получится дублирование, поэтому почистим и пересоздадим
-    // Лучше просто пересоздать заново
-    container.innerHTML = '';
-    const tempRules = [...rules];
-    rules = [];
-    tempRules.forEach(r => addRule(r));
-}
-
-function updateRulesJson() {
-    // Собираем актуальные данные из DOM
-    const container = document.getElementById('rules-container');
-    const rows = container.children;
-    const newRules = [];
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const typeSelect = row.querySelector('select:first-child');
-        const statSelect = row.querySelector('.stat-select');
-        const compSelect = row.querySelectorAll('select')[2];
-        const valueInput = row.querySelector('input[type="number"]');
-        const extraDiv = row.querySelector('.extra-fields');
-        let rule = {
-            type: typeSelect.value,
-            stat: statSelect.value,
-            comparison: compSelect.value,
-            value: valueInput.value !== '' ? parseFloat(valueInput.value) : 0
-        };
-        if (typeSelect.value === 'trend' && extraDiv) {
-            const teamSelect = extraDiv.querySelector('select');
-            const inputs = extraDiv.querySelectorAll('input');
-            rule.team = teamSelect ? teamSelect.value : 'home';
-            rule.matches = inputs[0] ? parseInt(inputs[0].value) || 5 : 5;
-            rule.required = inputs[1] ? parseInt(inputs[1].value) || 4 : 4;
-        }
-        newRules.push(rule);
-    }
-    document.getElementById('rules-json').value = JSON.stringify(newRules);
-}
-
-// Инициализация: добавляем одно правило по умолчанию
-addRule();
-
-// При изменении полей обновляем JSON
-document.addEventListener('change', function(e) {
-    if (e.target.closest('#rules-container')) {
-        updateRulesJson();
-    }
-});
-document.addEventListener('input', function(e) {
-    if (e.target.closest('#rules-container')) {
-        updateRulesJson();
-    }
-});
-
-// Перед отправкой формы обновляем JSON (на всякий случай)
-document.getElementById('filterForm').addEventListener('submit', function() {
-    updateRulesJson();
-});
-</script>
 </body>
 </html>

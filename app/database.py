@@ -20,6 +20,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS filters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
+        name TEXT,
         match_time_min INTEGER, match_time_max INTEGER,
         total_goals_min INTEGER, total_goals_max INTEGER,
         total_corners_min INTEGER, total_corners_max INTEGER,
@@ -114,6 +115,7 @@ def migrate_db(conn=None):
     c.execute("PRAGMA table_info(filters)")
     cols = [row[1] for row in c.fetchall()]
     new_cols = [
+        ('name', 'TEXT DEFAULT ""'),
         ('glicko_home_min', 'REAL DEFAULT 0'),
         ('glicko_home_max', 'REAL DEFAULT 100'),
         ('glicko_away_min', 'REAL DEFAULT 0'),
@@ -144,6 +146,17 @@ def migrate_db(conn=None):
     for col, type_def in new_cols_trig:
         if col not in cols:
             c.execute(f"ALTER TABLE triggered_matches ADD COLUMN {col} {type_def}")
+    # Users
+    c.execute("PRAGMA table_info(users)")
+    cols = [row[1] for row in c.fetchall()]
+    new_cols_users = [
+        ('agent_enabled', 'BOOLEAN DEFAULT 0'),
+        ('agent_model', 'TEXT DEFAULT "gpt-4o-mini"'),
+        ('agent_auto_analyze', 'BOOLEAN DEFAULT 0')
+    ]
+    for col, type_def in new_cols_users:
+        if col not in cols:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} {type_def}")
     conn.commit()
     if close_conn:
         conn.close()
@@ -221,7 +234,6 @@ def delete_filter(filter_id: int):
     conn.close()
 
 def get_all_untracked_filters_with_odds() -> List[dict]:
-    """Возвращает все активные фильтры с включённым отслеживанием коэффициентов."""
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT * FROM filters WHERE is_active=1 AND track_odds=1")
@@ -366,7 +378,7 @@ def mark_odds_tracking_triggered(filter_id: int, match_id: int):
     conn.commit()
     conn.close()
 
-# --- Архив сигналов ---
+# --- Архив ---
 def get_triggered_matches_count(user_id: int, filter_id: int = None, match_text: str = None,
                                 from_date: str = None, to_date: str = None) -> int:
     conn = get_db()
@@ -431,22 +443,43 @@ def get_triggered_matches(user_id: int, filter_id: int = None, match_text: str =
 def get_user_filters_for_archive(user_id: int) -> List[dict]:
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id, match_time_min, match_time_max FROM filters WHERE user_id=? ORDER BY id", (user_id,))
+    c.execute("SELECT id, name, match_time_min, match_time_max FROM filters WHERE user_id=? ORDER BY id", (user_id,))
     rows = c.fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
-# --- НОВАЯ ФУНКЦИЯ: Очистка архива ---
 def delete_all_triggered_matches(user_id: int):
-    """
-    Удаляет все срабатывания (сигналы) для указанного пользователя.
-    """
     conn = get_db()
     c = conn.cursor()
-    # Удаляем записи из triggered_matches, принадлежащие фильтрам пользователя
     c.execute(
         "DELETE FROM triggered_matches WHERE filter_id IN (SELECT id FROM filters WHERE user_id=?)",
         (user_id,)
     )
+    conn.commit()
+    conn.close()
+
+# --- Настройки агента ---
+def get_agent_settings(user_id: int) -> dict:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT agent_enabled, agent_model, agent_auto_analyze FROM users WHERE id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            'enabled': bool(row[0]),
+            'model': row[1],
+            'auto_analyze': bool(row[2])
+        }
+    return {'enabled': False, 'model': 'gpt-4o-mini', 'auto_analyze': False}
+
+def update_agent_settings(user_id: int, enabled: bool, model: str, auto_analyze: bool):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        UPDATE users 
+        SET agent_enabled=?, agent_model=?, agent_auto_analyze=? 
+        WHERE id=?
+    """, (1 if enabled else 0, model, 1 if auto_analyze else 0, user_id))
     conn.commit()
     conn.close()

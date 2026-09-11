@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import database as db
 from app.sstats_client import SStatsClient
@@ -26,28 +26,18 @@ def clean_chat_id(raw: str) -> int:
     return int(cleaned)
 
 def extract_team_names(match_data: dict) -> tuple:
-    """
-    Извлекает названия команд из match_data, перебирая возможные ключи.
-    Возвращает (home_name, away_name).
-    """
     home_name = 'Неизвестно'
     away_name = 'Неизвестно'
-
     if not match_data:
         return home_name, away_name
-
-    # Если match_data - строка, пробуем распарсить как JSON
     if isinstance(match_data, str):
         try:
             match_data = json.loads(match_data)
         except:
             return home_name, away_name
-
-    # Рекурсивный обход для поиска ключей 'home' и 'away' с name
     def find_names(obj):
         nonlocal home_name, away_name
         if isinstance(obj, dict):
-            # Проверяем ключи на наличие названий команд
             if 'home' in obj and isinstance(obj['home'], dict):
                 if 'name' in obj['home'] and obj['home']['name']:
                     home_name = obj['home']['name']
@@ -62,56 +52,39 @@ def extract_team_names(match_data: dict) -> tuple:
                     away_name = obj['away']['team_name']
                 elif 'title' in obj['away'] and obj['away']['title']:
                     away_name = obj['away']['title']
-
-            # Если есть 'home_team' и 'away_team' напрямую
             if 'home_team' in obj and isinstance(obj['home_team'], str):
                 home_name = obj['home_team']
             if 'away_team' in obj and isinstance(obj['away_team'], str):
                 away_name = obj['away_team']
-
-            # Если есть 'team1' и 'team2'
             if 'team1' in obj and isinstance(obj['team1'], str):
                 home_name = obj['team1']
             if 'team2' in obj and isinstance(obj['team2'], str):
                 away_name = obj['team2']
-
-            # Если есть 'homeName' и 'awayName'
             if 'homeName' in obj and isinstance(obj['homeName'], str):
                 home_name = obj['homeName']
             if 'awayName' in obj and isinstance(obj['awayName'], str):
                 away_name = obj['awayName']
-
-            # Рекурсивно обходим все значения
             for value in obj.values():
                 if isinstance(value, (dict, list)):
                     find_names(value)
         elif isinstance(obj, list):
             for item in obj:
                 find_names(item)
-
     find_names(match_data)
-
     return home_name, away_name
 
 def prepare_signals(matches: list) -> list:
-    """Обогащает сигналы извлечёнными названиями команд."""
     for idx, s in enumerate(matches):
         try:
             match_data = json.loads(s['match_data']) if s['match_data'] else {}
         except (json.JSONDecodeError, TypeError):
             match_data = {}
-
-        # Логируем структуру первого сигнала для отладки (можно убрать после настройки)
         if idx == 0 and match_data:
             logger.info(f"DEBUG: sample match_data structure: {json.dumps(match_data, ensure_ascii=False)[:500]}")
-
         home_name, away_name = extract_team_names(match_data)
         s['home_name'] = home_name
         s['away_name'] = away_name
-
     return matches
-
-# ---------- Основные маршруты ----------
 
 @router.get("/")
 async def index(request: Request):
@@ -145,6 +118,7 @@ async def new_filter(request: Request):
 async def save_filter(
     request: Request,
     chat_id: int = Form(...),
+    name: str = Form(""),
     match_time_min: int = Form(...), match_time_max: int = Form(...),
     total_goals_min: int = Form(...), total_goals_max: int = Form(...),
     total_corners_min: int = Form(...), total_corners_max: int = Form(...),
@@ -174,20 +148,21 @@ async def save_filter(
     glicko_home_min: float = Form(...), glicko_home_max: float = Form(...),
     glicko_away_min: float = Form(...), glicko_away_max: float = Form(...),
     glicko_draw_min: float = Form(...), glicko_draw_max: float = Form(...),
-    expected_outcome: str = Form(...),
-    rules: str = Form(...),
-    rule_logic: str = Form(...),
-    track_odds: bool = Form(...),
-    odds_target: str = Form(...),
-    odds_change_threshold: float = Form(...),
-    odds_change_type: str = Form(...),
-    odds_direction: str = Form(...)
+    expected_outcome: str = Form(""),
+    rules: str = Form("[]"),
+    rule_logic: str = Form("AND"),
+    track_odds: bool = Form(False),
+    odds_target: str = Form(""),
+    odds_change_threshold: float = Form(0.0),
+    odds_change_type: str = Form("absolute"),
+    odds_direction: str = Form("down")
 ):
     try:
         user_id = db.get_user_id(chat_id)
         if not user_id:
             user_id = db.create_user(chat_id)
         data = {
+            'name': name,
             'match_time_min': match_time_min, 'match_time_max': match_time_max,
             'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
             'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
@@ -255,6 +230,7 @@ async def update_filter(
     request: Request,
     filter_id: int,
     chat_id: int = Form(...),
+    name: str = Form(""),
     match_time_min: int = Form(...), match_time_max: int = Form(...),
     total_goals_min: int = Form(...), total_goals_max: int = Form(...),
     total_corners_min: int = Form(...), total_corners_max: int = Form(...),
@@ -284,14 +260,14 @@ async def update_filter(
     glicko_home_min: float = Form(...), glicko_home_max: float = Form(...),
     glicko_away_min: float = Form(...), glicko_away_max: float = Form(...),
     glicko_draw_min: float = Form(...), glicko_draw_max: float = Form(...),
-    expected_outcome: str = Form(...),
-    rules: str = Form(...),
-    rule_logic: str = Form(...),
-    track_odds: bool = Form(...),
-    odds_target: str = Form(...),
-    odds_change_threshold: float = Form(...),
-    odds_change_type: str = Form(...),
-    odds_direction: str = Form(...)
+    expected_outcome: str = Form(""),
+    rules: str = Form("[]"),
+    rule_logic: str = Form("AND"),
+    track_odds: bool = Form(False),
+    odds_target: str = Form(""),
+    odds_change_threshold: float = Form(0.0),
+    odds_change_type: str = Form("absolute"),
+    odds_direction: str = Form("down")
 ):
     try:
         user_id = db.get_user_id(chat_id)
@@ -301,6 +277,7 @@ async def update_filter(
         if not filter_data or filter_data.get('user_id') != user_id:
             return HTMLResponse("Доступ запрещён", status_code=403)
         data = {
+            'name': name,
             'match_time_min': match_time_min, 'match_time_max': match_time_max,
             'total_goals_min': total_goals_min, 'total_goals_max': total_goals_max,
             'total_corners_min': total_corners_min, 'total_corners_max': total_corners_max,
@@ -408,7 +385,6 @@ async def archive(request: Request):
         user_id = db.get_user_id(chat_id)
         if not user_id:
             user_id = db.create_user(chat_id)
-
         filter_id = request.query_params.get("filter_id")
         if filter_id:
             filter_id = int(filter_id)
@@ -418,15 +394,11 @@ async def archive(request: Request):
         page = int(request.query_params.get("page", 1))
         limit = 20
         offset = (page - 1) * limit
-
         filters = db.get_user_filters_for_archive(user_id)
         total = db.get_triggered_matches_count(user_id, filter_id, match_text, from_date, to_date)
         matches = db.get_triggered_matches(user_id, filter_id, match_text, from_date, to_date, limit, offset)
-
         matches = prepare_signals(matches)
-
         total_pages = (total + limit - 1) // limit if total > 0 else 1
-
         template = env.get_template("archive.html")
         html = template.render(
             chat_id=chat_id,
@@ -453,7 +425,6 @@ async def signals_table(request: Request):
         user_id = db.get_user_id(chat_id)
         if not user_id:
             user_id = db.create_user(chat_id)
-
         filter_id = request.query_params.get("filter_id")
         if filter_id:
             filter_id = int(filter_id)
@@ -463,15 +434,11 @@ async def signals_table(request: Request):
         page = int(request.query_params.get("page", 1))
         limit = 20
         offset = (page - 1) * limit
-
         filters = db.get_user_filters_for_archive(user_id)
         total = db.get_triggered_matches_count(user_id, filter_id, match_text, from_date, to_date)
         matches = db.get_triggered_matches(user_id, filter_id, match_text, from_date, to_date, limit, offset)
-
         matches = prepare_signals(matches)
-
         total_pages = (total + limit - 1) // limit if total > 0 else 1
-
         template = env.get_template("_signals_table.html")
         html = template.render(
             chat_id=chat_id,
@@ -533,7 +500,6 @@ async def remove_blacklist(request: Request, chat_id: int = Form(...), league_id
         logger.error(f"Error removing blacklist: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Error</h1><p>{e}</p>", status_code=500)
 
-# --- НОВЫЙ МАРШРУТ: Очистка архива ---
 @router.post("/archive/clear")
 async def clear_archive(request: Request, chat_id: int = Form(...)):
     try:
@@ -545,3 +511,5 @@ async def clear_archive(request: Request, chat_id: int = Form(...)):
     except Exception as e:
         logger.error(f"Error clearing archive: {e}", exc_info=True)
         return HTMLResponse(f"<h1>Ошибка</h1><p>{e}</p>", status_code=500)
+
+# AI-агент временно отключён
