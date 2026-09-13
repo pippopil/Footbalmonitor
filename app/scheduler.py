@@ -15,6 +15,7 @@ class MatchScheduler:
         self.bot = bot
         self.excel = excel
         self.scheduler = BackgroundScheduler()
+        self.sent_matches_cache = set()  # set of (str(match_id), str(filter_id)) to guarantee no duplicate spam
 
     def start(self):
         self.scheduler.add_job(
@@ -161,8 +162,10 @@ class MatchScheduler:
                         for item in triggered:
                             f = item['filter']
                             filter_id = f['id']
-                            if db.is_match_triggered(match_id, filter_id):
-                                logger.info(f"Матч {match_id} уже был отправлен для фильтра {filter_id}")
+                            cache_key = (str(match_id), str(filter_id))
+                            if cache_key in self.sent_matches_cache or db.is_match_triggered(match_id, filter_id):
+                                logger.info(f"Матч {match_id} уже был отправлен для фильтра {filter_id} (анти-спам)")
+                                self.sent_matches_cache.add(cache_key)
                                 continue
 
                             # Формируем сообщение с обработкой ошибок
@@ -175,6 +178,7 @@ class MatchScheduler:
                             try:
                                 await self.bot.send_message(chat_id, msg)
                                 logger.info(f"Отправлено сообщение пользователю {chat_id} для матча {match_id}, фильтр {filter_id}")
+                                self.sent_matches_cache.add(cache_key)
                             except Exception as e:
                                 logger.error(f"Ошибка отправки сообщения пользователю {chat_id}: {e}")
 

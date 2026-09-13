@@ -173,6 +173,8 @@ export interface SignalAlert {
   resolutionNote?: string;
 }
 
+export type DeduplicationMode = 'once-per-match' | 'cooldown' | 'score-change' | 'disabled';
+
 export interface TelegramConfig {
   botToken: string;
   channelId: string;
@@ -181,6 +183,10 @@ export interface TelegramConfig {
   autoSend: boolean;
   silentMode: boolean;
   parseMode: 'HTML' | 'Markdown';
+  suppressDuplicates: boolean;
+  deduplicationMode: DeduplicationMode;
+  cooldownMinutes: number;
+  blockedDuplicatesCount?: number;
 }
 
 export interface PressureAnalysis {

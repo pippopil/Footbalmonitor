@@ -146,6 +146,32 @@ async function startServer() {
     }
   });
 
+  // In-memory anti-spam deduplication cache for Telegram alerts
+  interface DispatchedSignalRecord {
+    timestamp: number;
+    matchId?: string;
+    ruleId?: string;
+    fingerprint: string;
+  }
+  const recentDispatchedSignals = new Map<string, DispatchedSignalRecord>();
+
+  // Helper to clean up old cache entries (> 2 hours)
+  const pruneDispatchedSignals = () => {
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    for (const [key, record] of recentDispatchedSignals.entries()) {
+      if (record.timestamp < twoHoursAgo) {
+        recentDispatchedSignals.delete(key);
+      }
+    }
+  };
+
+  // Endpoint to clear deduplication cache on demand
+  app.post('/api/telegram/clear-dedup', (req, res) => {
+    const prevSize = recentDispatchedSignals.size;
+    recentDispatchedSignals.clear();
+    res.json({ ok: true, cleared: prevSize, message: 'Кэш дедупликации сигналов очищен' });
+  });
+
   // Send message to Telegram chat / channel
   app.post('/api/telegram/send', async (req, res) => {
     const {
@@ -154,6 +180,10 @@ async function startServer() {
       disable_notification = false,
       chat_id,
       bot_token,
+      match_id,
+      rule_id,
+      force = false,
+      cooldown_seconds = 600, // 10 minutes default cooldown
     } = req.body;
 
     const token = bot_token || process.env.TELEGRAM_BOT_TOKEN;
@@ -180,6 +210,35 @@ async function startServer() {
       });
     }
 
+    // Anti-spam deduplication check
+    pruneDispatchedSignals();
+    const cleanChat = String(targetChatId).trim();
+    let fingerprint = '';
+    if (match_id && rule_id) {
+      fingerprint = `${cleanChat}__m_${match_id}__r_${rule_id}`;
+    } else {
+      // Create text-based fingerprint using normalized text without variable minute numbers
+      const normalizedSnippet = text.slice(0, 160).replace(/\d+['′’]/g, '').trim();
+      fingerprint = `${cleanChat}__hash_${normalizedSnippet}`;
+    }
+
+    if (!force) {
+      const existing = recentDispatchedSignals.get(fingerprint);
+      if (existing) {
+        const elapsedSec = Math.floor((Date.now() - existing.timestamp) / 1000);
+        if (elapsedSec < cooldown_seconds) {
+          const waitRemain = Math.ceil(cooldown_seconds - elapsedSec);
+          return res.json({
+            ok: true,
+            duplicateSuppressed: true,
+            message: `Повторный сигнал подавлен анти-спам защитой (уже отправлен ${elapsedSec} сек назад, кулдаун ещё ${waitRemain} сек)`,
+            elapsedSec,
+            cooldownSeconds: cooldown_seconds,
+          });
+        }
+      }
+    }
+
     try {
       const telegramRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
@@ -198,6 +257,12 @@ async function startServer() {
       const result = await telegramRes.json() as { ok: boolean; description?: string; result?: any };
 
       if (result.ok) {
+        recentDispatchedSignals.set(fingerprint, {
+          timestamp: Date.now(),
+          matchId: match_id,
+          ruleId: rule_id,
+          fingerprint,
+        });
         return res.json({
           ok: true,
           messageId: result.result?.message_id,

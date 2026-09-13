@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Activity,
   Bell,
@@ -839,11 +839,24 @@ export default function App() {
     a.click();
     a.remove();
   };
-  const [telegramConfig, setTelegramConfig] = useState(() => {
+  const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(() => {
     const saved = localStorage.getItem('footbalmonitor_tg_config');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          botToken: parsed.botToken || '',
+          channelId: parsed.channelId || '',
+          notificationsCount: parsed.notificationsCount || 0,
+          lastPing: parsed.lastPing || '',
+          autoSend: parsed.autoSend ?? true,
+          silentMode: parsed.silentMode ?? false,
+          parseMode: parsed.parseMode || 'HTML',
+          suppressDuplicates: parsed.suppressDuplicates ?? true,
+          deduplicationMode: parsed.deduplicationMode || 'once-per-match',
+          cooldownMinutes: parsed.cooldownMinutes ?? 15,
+          blockedDuplicatesCount: parsed.blockedDuplicatesCount || 0,
+        };
       } catch (e) {
         // fallback
       }
@@ -856,8 +869,45 @@ export default function App() {
       autoSend: true,
       silentMode: false,
       parseMode: 'HTML' as const,
+      suppressDuplicates: true,
+      deduplicationMode: 'once-per-match' as const,
+      cooldownMinutes: 15,
+      blockedDuplicatesCount: 0,
     };
   });
+
+  // Sent signals tracker to block duplicate alerts every minute
+  const sentSignalsTrackerRef = useRef<Map<string, { lastSentAt: number; lastMinute: number; lastScore: string }>>(new Map());
+
+  // Load tracker from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('footbalmonitor_sent_signals_tracker');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(([k, v]) => sentSignalsTrackerRef.current.set(k, v));
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  const clearDeduplicationHistory = async () => {
+    sentSignalsTrackerRef.current.clear();
+    try {
+      localStorage.removeItem('footbalmonitor_sent_signals_tracker');
+    } catch (e) {
+      // ignore
+    }
+    setTelegramConfig((prev) => ({ ...prev, blockedDuplicatesCount: 0 }));
+    try {
+      await fetch('/api/telegram/clear-dedup', { method: 'POST' });
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const [telegramStatus, setTelegramStatus] = useState<'idle' | 'checking' | 'connected' | 'error' | 'sending'>('idle');
   const [telegramBotInfo, setTelegramBotInfo] = useState<{ id?: number; username?: string; first_name?: string } | null>(null);
@@ -980,7 +1030,11 @@ export default function App() {
   }, []);
 
   // Send message through backend API
-  const sendTelegramMessage = async (text: string, isManualTest = false) => {
+  const sendTelegramMessage = async (
+    text: string,
+    isManualTest = false,
+    options?: { matchId?: string; ruleId?: string; force?: boolean }
+  ) => {
     const token = telegramConfig.botToken.trim();
     const chatId = telegramConfig.channelId.trim();
 
@@ -1004,11 +1058,24 @@ export default function App() {
           bot_token: token,
           disable_notification: telegramConfig.silentMode,
           parse_mode: telegramConfig.parseMode,
+          match_id: options?.matchId,
+          rule_id: options?.ruleId,
+          force: options?.force ?? isManualTest,
+          cooldown_seconds: (telegramConfig.cooldownMinutes || 15) * 60,
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.ok) {
+        if (data.duplicateSuppressed) {
+          setTelegramStatus('connected');
+          setTelegramConfig((prev: typeof telegramConfig) => ({
+            ...prev,
+            blockedDuplicatesCount: (prev.blockedDuplicatesCount || 0) + 1,
+          }));
+          return { ok: true, duplicateSuppressed: true, message: data.message };
+        }
+
         setTelegramStatus('connected');
         setTelegramConfig((prev: typeof telegramConfig) => ({
           ...prev,
@@ -1087,7 +1154,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isMonitoringActive]);
 
-  // Check filter triggers and auto-send alerts
+  // Check filter triggers and auto-send alerts with Anti-Spam deduplication
   useEffect(() => {
     matches.forEach((match) => {
       const analysis = calculatePressureAnalysis(match);
@@ -1096,7 +1163,51 @@ export default function App() {
         const evalResult = evaluateFilterRule(match, rule);
         if (!evalResult.matches) return;
 
-        // Found match! Let's check if alert already recorded for this minute
+        const trackerKey = `${match.id}__${rule.id}`;
+        const existingTrack = sentSignalsTrackerRef.current.get(trackerKey);
+        const currentScoreStr = `${match.score[0]}:${match.score[1]}`;
+
+        let isDuplicateSuppressed = false;
+
+        if (telegramConfig.suppressDuplicates) {
+          if (existingTrack) {
+            if (telegramConfig.deduplicationMode === 'once-per-match') {
+              isDuplicateSuppressed = true;
+            } else if (telegramConfig.deduplicationMode === 'cooldown') {
+              const minutesPassed = Math.abs(match.minute - existingTrack.lastMinute);
+              const msPassed = Date.now() - existingTrack.lastSentAt;
+              const cooldownMs = (telegramConfig.cooldownMinutes || 15) * 60 * 1000;
+              if (minutesPassed < (telegramConfig.cooldownMinutes || 15) && msPassed < cooldownMs) {
+                isDuplicateSuppressed = true;
+              }
+            } else if (telegramConfig.deduplicationMode === 'score-change') {
+              if (currentScoreStr === existingTrack.lastScore) {
+                isDuplicateSuppressed = true;
+              }
+            }
+          }
+        }
+
+        if (isDuplicateSuppressed) {
+          return;
+        }
+
+        // Record into anti-spam memory
+        sentSignalsTrackerRef.current.set(trackerKey, {
+          lastSentAt: Date.now(),
+          lastMinute: match.minute,
+          lastScore: currentScoreStr,
+        });
+        try {
+          localStorage.setItem(
+            'footbalmonitor_sent_signals_tracker',
+            JSON.stringify(Array.from(sentSignalsTrackerRef.current.entries()))
+          );
+        } catch (e) {
+          // ignore
+        }
+
+        // Found match and passed anti-spam! Check if alert already recorded in current state list
         const alertId = `${match.id}-${rule.id}-${match.minute}`;
         setSignals((prev) => {
           if (prev.some((s) => s.id === alertId)) return prev;
@@ -1111,7 +1222,7 @@ export default function App() {
             league: match.league,
             country: match.country,
             minute: match.minute,
-            score: `${match.score[0]}:${match.score[1]}`,
+            score: currentScoreStr,
             ruleId: rule.id,
             ruleName: rule.name,
             marketSuggestion: rule.targetMarket,
@@ -1126,14 +1237,22 @@ export default function App() {
           };
 
           if (shouldSendTg) {
-            sendTelegramMessage(formatExtendedTelegramAlert(match, rule, analysis)).then((res) => {
+            sendTelegramMessage(
+              formatExtendedTelegramAlert(match, rule, analysis),
+              false,
+              { matchId: match.id, ruleId: rule.id }
+            ).then((res) => {
               setSignals((curr) =>
                 curr.map((item) =>
                   item.id === alertId
                     ? {
                         ...item,
-                        sentToTelegram: res.ok,
-                        telegramStatusText: res.ok ? `Доставлено в TG (#${res.messageId})` : (res.error || 'Ошибка отправки'),
+                        sentToTelegram: res.ok && !res.duplicateSuppressed,
+                        telegramStatusText: res.duplicateSuppressed
+                          ? '🛡️ Дубликат подавлен'
+                          : res.ok
+                          ? `Доставлено в TG (#${res.messageId})`
+                          : (res.error || 'Ошибка отправки'),
                         telegramMessageId: res.messageId,
                       }
                     : item
@@ -1146,7 +1265,16 @@ export default function App() {
         });
       });
     });
-  }, [matches, filters, telegramConfig.autoSend, telegramConfig.botToken, telegramConfig.channelId]);
+  }, [
+    matches,
+    filters,
+    telegramConfig.autoSend,
+    telegramConfig.botToken,
+    telegramConfig.channelId,
+    telegramConfig.suppressDuplicates,
+    telegramConfig.deduplicationMode,
+    telegramConfig.cooldownMinutes,
+  ]);
 
   const selectedMatch = useMemo(() => {
     return matches.find((m) => m.id === selectedMatchId) || matches[0];
@@ -1532,7 +1660,14 @@ export default function App() {
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-xs text-slate-400">Отправлено в канал</span>
+              <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                Отправлено в канал
+                {telegramConfig.blockedDuplicatesCount ? (
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/15 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono" title="Заблокировано повторных спам-сигналов">
+                    🛡️ -{telegramConfig.blockedDuplicatesCount} спама
+                  </span>
+                ) : null}
+              </span>
               <div className="text-xl font-bold text-blue-400">{telegramConfig.notificationsCount} алертов</div>
             </div>
             <Send className="h-6 w-6 text-blue-400/50" />
@@ -3328,6 +3463,169 @@ export default function App() {
                               telegramConfig.silentMode ? 'left-4.5' : 'left-0.5'
                             }`}
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Anti-Spam & Deduplication Filtering Section */}
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-slate-900/90 to-slate-950 border border-slate-800 space-y-3.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <Shield className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                              Анти-спам фильтрация повторных сигналов
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-normal ${
+                                telegramConfig.suppressDuplicates
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : 'bg-rose-500/20 text-rose-300'
+                              }`}>
+                                {telegramConfig.suppressDuplicates ? 'Активен' : 'Отключен'}
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              Блокирует повторную отправку одних и тех же сигналов каждую минуту для текущего матча
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => setTelegramConfig({ ...telegramConfig, suppressDuplicates: !telegramConfig.suppressDuplicates })}
+                            className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
+                              telegramConfig.suppressDuplicates
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}
+                          >
+                            {telegramConfig.suppressDuplicates ? 'Включено' : 'Выключено'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearDeduplicationHistory}
+                            title="Сбросить историю отправленных сигналов для повторного тестирования"
+                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium flex items-center gap-1 transition"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Сбросить память
+                          </button>
+                        </div>
+                      </div>
+
+                      {telegramConfig.suppressDuplicates && (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                            {/* Mode 1: 1 per match */}
+                            <div
+                              onClick={() => setTelegramConfig({ ...telegramConfig, deduplicationMode: 'once-per-match' })}
+                              className={`p-3 rounded-lg border cursor-pointer transition ${
+                                telegramConfig.deduplicationMode === 'once-per-match'
+                                  ? 'bg-emerald-500/10 border-emerald-500/40 text-white shadow-sm'
+                                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-semibold text-xs text-emerald-300 flex items-center gap-1.5">
+                                  <Target className="h-3.5 w-3.5 text-emerald-400" />
+                                  1 сигнал на матч
+                                </div>
+                                {telegramConfig.deduplicationMode === 'once-per-match' && (
+                                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 leading-snug">
+                                Фильтр срабатывает ровно 1 раз за матч. Полный запрет повторов в бот каждую минуту (Рекомендуется).
+                              </p>
+                            </div>
+
+                            {/* Mode 2: Cooldown */}
+                            <div
+                              onClick={() => setTelegramConfig({ ...telegramConfig, deduplicationMode: 'cooldown' })}
+                              className={`p-3 rounded-lg border cursor-pointer transition ${
+                                telegramConfig.deduplicationMode === 'cooldown'
+                                  ? 'bg-sky-500/10 border-sky-500/40 text-white shadow-sm'
+                                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-semibold text-xs text-sky-300 flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-sky-400" />
+                                  Кулдаун (пауза)
+                                </div>
+                                {telegramConfig.deduplicationMode === 'cooldown' && (
+                                  <Check className="h-3.5 w-3.5 text-sky-400" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 leading-snug">
+                                Повторный сигнал разрешён только через {telegramConfig.cooldownMinutes || 15} мин, если условия сохраняются.
+                              </p>
+                            </div>
+
+                            {/* Mode 3: Score Change */}
+                            <div
+                              onClick={() => setTelegramConfig({ ...telegramConfig, deduplicationMode: 'score-change' })}
+                              className={`p-3 rounded-lg border cursor-pointer transition ${
+                                telegramConfig.deduplicationMode === 'score-change'
+                                  ? 'bg-amber-500/10 border-amber-500/40 text-white shadow-sm'
+                                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-semibold text-xs text-amber-300 flex items-center gap-1.5">
+                                  <Activity className="h-3.5 w-3.5 text-amber-400" />
+                                  При смене счёта
+                                </div>
+                                {telegramConfig.deduplicationMode === 'score-change' && (
+                                  <Check className="h-3.5 w-3.5 text-amber-400" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 leading-snug">
+                                Повторный сигнал отправляется только если в матче был забит гол и изменился счёт.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Cooldown duration selector when cooldown mode is selected */}
+                          {telegramConfig.deduplicationMode === 'cooldown' && (
+                            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+                              <span className="text-slate-400 font-medium">Интервал паузы между сигналами:</span>
+                              <div className="flex items-center gap-1.5">
+                                {[5, 10, 15, 20, 30].map((mins) => (
+                                  <button
+                                    key={mins}
+                                    type="button"
+                                    onClick={() => setTelegramConfig({ ...telegramConfig, cooldownMinutes: mins })}
+                                    className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
+                                      telegramConfig.cooldownMinutes === mins
+                                        ? 'bg-sky-600 text-white shadow'
+                                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                                    }`}
+                                  >
+                                    {mins} мин
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Заблокировано спам-дубликатов:</span>
+                          <span className="font-bold font-mono text-emerald-400">{telegramConfig.blockedDuplicatesCount || 0}</span>
+                        </div>
+                        <div className="text-slate-500">
+                          Режим:{' '}
+                          {telegramConfig.deduplicationMode === 'once-per-match'
+                            ? '1 сигнал на матч'
+                            : telegramConfig.deduplicationMode === 'cooldown'
+                            ? `Пауза ${telegramConfig.cooldownMinutes} мин`
+                            : 'Только при новом голе'}
                         </div>
                       </div>
                     </div>
