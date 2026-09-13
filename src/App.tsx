@@ -44,6 +44,9 @@ import {
   RotateCcw,
   Check,
   FileSpreadsheet,
+  Globe,
+  Database,
+  FlaskConical,
 } from 'lucide-react';
 
 import {
@@ -56,6 +59,8 @@ import {
   FilterCategory,
   ScoreCondition,
   PressureAnalysis,
+  DataSourceConfig,
+  DataSourceType,
 } from './types';
 import { EXPANDED_DEFAULT_FILTERS } from './data/defaultFilters';
 import {
@@ -66,6 +71,8 @@ import {
 import { FilterBuilderModal } from './components/FilterBuilderModal';
 import { BacktestingView } from './components/BacktestingView';
 import { AIAnalystModal } from './components/AIAnalystModal';
+import { DataSourcesModal } from './components/DataSourcesModal';
+import { RealMatchTesterModal } from './components/RealMatchTesterModal';
 import { getEstimatedOdds } from './backtestEngine';
 
 const INITIAL_SIGNALS: SignalAlert[] = [
@@ -202,7 +209,18 @@ const INITIAL_MATCHES: Match[] = [
     },
     momentum: [15, 30, 45, 60, -20, 55, 70, 65],
     lastEvent: "67' Опасный удар со штрафного (Arsenal)",
-    odds: { home: 1.65, draw: 3.4, away: 5.5, over25: 1.72 },
+    odds: { home: 1.65, draw: 3.4, away: 5.5, over25: 1.62, btts: 1.60 },
+    history: {
+      homeConcededLastMatch: 2,
+      awayConcededLastMatch: 2,
+      homeLostLastMatch: true,
+      awayLostLastMatch: true,
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      homeOver25Streak: 5,
+      awayOver25Streak: 4,
+      predictedIpt: 2.85,
+    },
   },
   {
     id: 'm-2',
@@ -228,7 +246,16 @@ const INITIAL_MATCHES: Match[] = [
     },
     momentum: [40, 50, 75, 80, 85, 90, 80, 88],
     lastEvent: "72' Сейв вратаря Valencia после удара в створ",
-    odds: { home: 1.44, draw: 3.8, away: 8.5, over25: 1.95 },
+    odds: { home: 1.44, draw: 3.8, away: 8.5, over25: 1.65, btts: 1.80 },
+    history: {
+      homeConcededLastMatch: 1,
+      awayConcededLastMatch: 2,
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      homeOver25Streak: 6,
+      awayOver25Streak: 3,
+      predictedIpt: 2.92,
+    },
   },
   {
     id: 'm-3',
@@ -254,7 +281,12 @@ const INITIAL_MATCHES: Match[] = [
     },
     momentum: [10, -20, 25, -15, 30, 40, -10, 20],
     lastEvent: "53' Гол! Dortmund выходит вперед (2:1)",
-    odds: { home: 1.85, draw: 3.75, away: 4.1, over25: 1.35 },
+    odds: { home: 1.85, draw: 3.75, away: 4.1, over25: 1.35, btts: 1.52 },
+    history: {
+      predictedIpt: 3.2,
+      homeOver25Streak: 7,
+      awayOver25Streak: 5,
+    },
   },
   {
     id: 'm-4',
@@ -280,7 +312,12 @@ const INITIAL_MATCHES: Match[] = [
     },
     momentum: [35, 60, 70, 75, 80, 85, 80, 92],
     lastEvent: "80' Штурм ворот Atalanta, заблокирован удар",
-    odds: { home: 2.1, draw: 2.45, away: 4.8, over25: 2.15 },
+    odds: { home: 2.1, draw: 2.45, away: 4.8, over25: 1.70, btts: 1.65 },
+    history: {
+      predictedIpt: 2.75,
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+    },
   },
   {
     id: 'm-5',
@@ -306,21 +343,223 @@ const INITIAL_MATCHES: Match[] = [
     },
     momentum: [-5, 10, -15, 20, 10, -5, 15, -10],
     lastEvent: "35' Опасная контратака Palmeiras",
-    odds: { home: 2.3, draw: 3.1, away: 3.2, over25: 2.05 },
+    odds: { home: 2.3, draw: 3.1, away: 3.2, over25: 2.05, btts: 1.95 },
+  },
+  {
+    id: 'm-6',
+    country: 'England',
+    countryCode: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    league: 'Premier League',
+    homeTeam: 'Manchester City',
+    awayTeam: 'Everton',
+    score: [0, 0],
+    minute: 17,
+    status: 'LIVE',
+    source: 'Flashscore',
+    stats: {
+      possession: [72, 28],
+      dangerousAttacks: [24, 6],
+      attacks: [38, 12],
+      shotsOnTarget: [3, 0],
+      shotsOffTarget: [3, 0],
+      corners: [3, 0],
+      yellowCards: [0, 1],
+      redCards: [0, 0],
+      xg: [0.78, 0.05],
+    },
+    momentum: [60, 75, 80, 85, 88],
+    lastEvent: "16' Плотный дальний удар фаворита в створ",
+    odds: { home: 1.25, draw: 6.5, away: 12.0, over25: 1.55, btts: 1.85 },
+    history: {
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      predictedIpt: 3.15,
+    },
+  },
+  {
+    id: 'm-7',
+    country: 'Italy',
+    countryCode: '🇮🇹',
+    league: 'Serie A',
+    homeTeam: 'Napoli',
+    awayTeam: 'Cagliari',
+    score: [0, 0],
+    minute: 60,
+    status: 'LIVE',
+    source: 'Sofascore',
+    stats: {
+      possession: [66, 34],
+      dangerousAttacks: [58, 22],
+      attacks: [98, 41],
+      shotsOnTarget: [6, 1],
+      shotsOffTarget: [5, 2],
+      corners: [8, 1],
+      yellowCards: [1, 2],
+      redCards: [0, 0],
+      xg: [1.74, 0.18],
+    },
+    momentum: [45, 60, 70, 80, 85, 90],
+    lastEvent: "59' Штурм ворот Cagliari, спасение защитника",
+    odds: { home: 1.48, draw: 4.2, away: 7.5, over25: 1.62, btts: 1.75 },
+    history: {
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      homeOver25Streak: 5,
+      awayOver25Streak: 3,
+      predictedIpt: 2.88,
+    },
+  },
+  {
+    id: 'm-8',
+    country: 'Germany',
+    countryCode: '🇩🇪',
+    league: 'Bundesliga',
+    homeTeam: 'Bayern Munich',
+    awayTeam: 'Hoffenheim',
+    score: [1, 0],
+    minute: 28,
+    status: 'LIVE',
+    source: 'Flashscore',
+    stats: {
+      possession: [74, 26],
+      dangerousAttacks: [42, 11],
+      attacks: [65, 20],
+      shotsOnTarget: [5, 1],
+      shotsOffTarget: [4, 1],
+      corners: [5, 1],
+      yellowCards: [0, 1],
+      redCards: [0, 0],
+      xg: [1.62, 0.15],
+    },
+    momentum: [65, 80, 85, 90],
+    lastEvent: "27' Удар в перекладину ворот Hoffenheim",
+    odds: {
+      home: 1.18,
+      draw: 7.5,
+      away: 14.0,
+      over25: 1.38,
+      over35: 1.88,
+      handicap1: 1.45,
+      itb1_25: 1.50,
+      btts: 1.55,
+    },
+    history: {
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      predictedIpt: 3.45,
+    },
+  },
+  {
+    id: 'm-9',
+    country: 'England',
+    countryCode: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    league: 'Premier League',
+    homeTeam: 'Liverpool',
+    awayTeam: 'Aston Villa',
+    score: [1, 2],
+    minute: 82,
+    status: 'LIVE',
+    source: 'Flashscore',
+    stats: {
+      possession: [65, 35],
+      dangerousAttacks: [78, 28],
+      attacks: [126, 54],
+      shotsOnTarget: [8, 3],
+      shotsOffTarget: [7, 2],
+      corners: [10, 3],
+      yellowCards: [2, 3],
+      redCards: [0, 0],
+      xg: [2.35, 1.10],
+    },
+    momentum: [50, 70, 80, 85, 92, 95],
+    lastEvent: "81' Сейв вратаря Aston Villa после углового",
+    odds: { home: 1.55, draw: 3.9, away: 5.8, over25: 1.60, btts: 1.62 },
+    history: {
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+      last4LateGoalCount: 3,
+    },
+  },
+  {
+    id: 'm-10',
+    country: 'Italy',
+    countryCode: '🇮🇹',
+    league: 'Serie A',
+    homeTeam: 'Inter',
+    awayTeam: 'Torino',
+    score: [0, 1],
+    minute: 52,
+    status: 'LIVE',
+    source: 'Sofascore',
+    stats: {
+      possession: [67, 33],
+      dangerousAttacks: [54, 18],
+      attacks: [92, 39],
+      shotsOnTarget: [5, 1],
+      shotsOffTarget: [6, 2],
+      corners: [7, 1],
+      yellowCards: [1, 2],
+      redCards: [0, 0],
+      xg: [1.45, 0.40],
+    },
+    momentum: [40, 60, 75, 80, 85],
+    lastEvent: "50' Давление Интера у ворот Torino",
+    odds: { home: 1.35, draw: 4.8, away: 8.5, over25: 1.68, btts: 1.85 },
+    history: {
+      homeLast5NoZeroZero: true,
+      awayLast5NoZeroZero: true,
+    },
+  },
+  {
+    id: 'm-11',
+    country: 'Portugal',
+    countryCode: '🇵🇹',
+    league: 'Primeira Liga',
+    homeTeam: 'Benfica',
+    awayTeam: 'Sporting',
+    score: [1, 2],
+    minute: 48,
+    status: 'LIVE',
+    source: 'Flashscore',
+    stats: {
+      possession: [50, 50],
+      dangerousAttacks: [40, 43],
+      attacks: [72, 78],
+      shotsOnTarget: [4, 5],
+      shotsOffTarget: [3, 4],
+      corners: [4, 4],
+      yellowCards: [2, 1],
+      redCards: [0, 0],
+      xg: [1.15, 1.40],
+    },
+    momentum: [10, -30, 20, -25, 15],
+    lastEvent: "46' Начало второго тайма",
+    odds: { home: 2.10, draw: 3.3, away: 3.4, over25: 1.65, btts: 1.55 },
+    history: {
+      guestScoredTwoQuickFirstHalf: true,
+      h2hOver15Pct: 85,
+    },
   },
 ];
 
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   
-  // Persistent filters loaded from localStorage or expanded default presets
+  // Persistent filters loaded from localStorage with auto-sync for new presets
   const [filters, setFilters] = useState<FilterRule[]>(() => {
     const saved = localStorage.getItem('footbalmonitor_filters');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const existingIds = new Set(parsed.map((f: any) => f.id));
+          const merged = [...parsed];
+          for (const preset of EXPANDED_DEFAULT_FILTERS) {
+            if (!existingIds.has(preset.id)) {
+              merged.push(preset);
+            }
+          }
+          return merged;
         }
       } catch (e) {
         // fallback
@@ -377,6 +616,170 @@ export default function App() {
   const handleOpenAIAnalyst = (targetMatch: Match) => {
     setAiTargetMatch(targetMatch);
     setIsAIModalOpen(true);
+  };
+
+  // Real Match Tester modal state
+  const [isRealMatchTesterOpen, setIsRealMatchTesterOpen] = useState<boolean>(false);
+
+  // Data Sources configuration state
+  const [isDataSourcesModalOpen, setIsDataSourcesModalOpen] = useState<boolean>(false);
+  const [isRefreshingMatches, setIsRefreshingMatches] = useState<boolean>(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const [dataSourceError, setDataSourceError] = useState<string | null>(null);
+
+  const [dataSourceConfig, setDataSourceConfig] = useState<DataSourceConfig>(() => {
+    const saved = localStorage.getItem('footbalmonitor_datasource_config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            activeSource: (parsed.activeSource || 'flashscore') as DataSourceType,
+            flashscore: parsed.flashscore || {
+              enabled: true,
+              includeOdds: true,
+              maxMatches: 150,
+            },
+            sstats: parsed.sstats || {
+              enabled: true,
+              apiKey: '',
+            },
+            sofascore: parsed.sofascore || {
+              enabled: true,
+              useProxy: false,
+            },
+            apiFootball: parsed.apiFootball || {
+              enabled: false,
+              apiKey: '',
+              provider: 'api-sports' as const,
+              leaguesFilter: '39,140,135,78,61',
+            },
+            footballData: parsed.footballData || {
+              enabled: false,
+              apiToken: '',
+              plan: 'free' as const,
+            },
+            webhook: parsed.webhook || {
+              enabled: false,
+              secretKey: '',
+              ingestedCount: 0,
+            },
+            publicFeed: parsed.publicFeed || {
+              enabled: true,
+            },
+            autoRefresh: parsed.autoRefresh ?? true,
+            refreshIntervalSeconds: parsed.refreshIntervalSeconds || 30,
+          };
+        }
+      } catch (e) {}
+    }
+    return {
+      activeSource: 'flashscore' as DataSourceType,
+      flashscore: {
+        enabled: true,
+        includeOdds: true,
+        maxMatches: 150,
+      },
+      sstats: {
+        enabled: true,
+        apiKey: '',
+      },
+      sofascore: {
+        enabled: true,
+        useProxy: false,
+      },
+      apiFootball: {
+        enabled: false,
+        apiKey: '',
+        provider: 'api-sports' as const,
+        leaguesFilter: '39,140,135,78,61',
+      },
+      footballData: {
+        enabled: false,
+        apiToken: '',
+        plan: 'free' as const,
+      },
+      webhook: {
+        enabled: false,
+        secretKey: '',
+        ingestedCount: 0,
+      },
+      publicFeed: {
+        enabled: true,
+      },
+      autoRefresh: true,
+      refreshIntervalSeconds: 30,
+    };
+  });
+
+  // Save data source config to localStorage
+  useEffect(() => {
+    localStorage.setItem('footbalmonitor_datasource_config', JSON.stringify(dataSourceConfig));
+  }, [dataSourceConfig]);
+
+  // Fetch real matches from selected data source
+  const fetchLiveMatchesFromSource = async (sourceType?: DataSourceType) => {
+    const src = sourceType || dataSourceConfig.activeSource;
+    if (src === 'simulated') {
+      setMatches(INITIAL_MATCHES);
+      setLastFetchedAt(new Date().toLocaleTimeString('ru-RU'));
+      return;
+    }
+
+    setIsRefreshingMatches(true);
+    setDataSourceError(null);
+
+    try {
+      let query = `?source=${src}&nocache=1`;
+      if (src === 'sstats' && dataSourceConfig.sstats?.apiKey) {
+        query += `&sstats_key=${encodeURIComponent(dataSourceConfig.sstats.apiKey)}`;
+      } else if (src === 'api-football' && dataSourceConfig.apiFootball?.apiKey) {
+        query += `&api_key=${encodeURIComponent(dataSourceConfig.apiFootball.apiKey)}&provider=${dataSourceConfig.apiFootball.provider}&leagues=${encodeURIComponent(dataSourceConfig.apiFootball.leaguesFilter)}`;
+      } else if (src === 'football-data' && dataSourceConfig.footballData?.apiToken) {
+        query += `&football_data_token=${encodeURIComponent(dataSourceConfig.footballData.apiToken)}`;
+      }
+
+      const res = await fetch(`/api/datasources/live${query}`);
+      const data = await res.json();
+      if (res.ok && data.ok && Array.isArray(data.matches) && data.matches.length > 0) {
+        setMatches(data.matches);
+        if (!data.matches.some((m: Match) => m.id === selectedMatchId)) {
+          setSelectedMatchId(data.matches[0].id);
+        }
+        setLastFetchedAt(data.fetchedAt || new Date().toLocaleTimeString('ru-RU'));
+      } else if (data.matches && data.matches.length === 0) {
+        setDataSourceError('В выбранном источнике сейчас нет активных Live-матчей. Попробуйте Flashscore или Public Feed.');
+      } else {
+        setDataSourceError(data.error || 'Ошибка при получении матчей из источника');
+      }
+    } catch (err: any) {
+      setDataSourceError(`Сетевая ошибка: ${err?.message || err}`);
+    } finally {
+      setIsRefreshingMatches(false);
+    }
+  };
+
+  // Initial load of real matches if public-feed or api is chosen
+  useEffect(() => {
+    if (dataSourceConfig.activeSource !== 'simulated') {
+      fetchLiveMatchesFromSource(dataSourceConfig.activeSource);
+    }
+  }, [dataSourceConfig.activeSource]);
+
+  // Periodic auto-refresh for real live matches
+  useEffect(() => {
+    if (dataSourceConfig.activeSource !== 'simulated' && dataSourceConfig.autoRefresh && isMonitoringActive) {
+      const intervalMs = Math.max(15, dataSourceConfig.refreshIntervalSeconds || 30) * 1000;
+      const timer = setInterval(() => {
+        fetchLiveMatchesFromSource(dataSourceConfig.activeSource);
+      }, intervalMs);
+      return () => clearInterval(timer);
+    }
+  }, [dataSourceConfig.activeSource, dataSourceConfig.autoRefresh, dataSourceConfig.refreshIntervalSeconds, isMonitoringActive]);
+
+  const handleAddMatchToLive = (newMatch: Match) => {
+    setMatches((prev) => [newMatch, ...prev.filter((m) => m.id !== newMatch.id)]);
+    setSelectedMatchId(newMatch.id);
   };
 
   // Update signal outcome (WIN, LOSS, REFUND, PENDING)
@@ -638,9 +1041,10 @@ export default function App() {
     }
   };
 
-  // Simulation: live ticking
+  // Simulation: live ticking (only when in simulated demo mode)
   useEffect(() => {
     if (!isMonitoringActive) return;
+    if (dataSourceConfig.activeSource !== 'simulated') return;
 
     const interval = setInterval(() => {
       setMatches((prev) =>
@@ -783,6 +1187,55 @@ export default function App() {
     setFilters((prev) => [copy, ...prev]);
   };
 
+  const handleCreateFilterFromMatch = (match: Match) => {
+    const dangDiff = Math.abs(match.stats.dangerousAttacks[0] - match.stats.dangerousAttacks[1]);
+    const totalShots =
+      match.stats.shotsOnTarget[0] +
+      match.stats.shotsOnTarget[1] +
+      match.stats.shotsOffTarget[0] +
+      match.stats.shotsOffTarget[1];
+    const totalSot = match.stats.shotsOnTarget[0] + match.stats.shotsOnTarget[1];
+    const totalCorners = match.stats.corners[0] + match.stats.corners[1];
+    const totalXg = match.stats.xg[0] + match.stats.xg[1];
+    const analysis = calculatePressureAnalysis(match);
+
+    const customRule: FilterRule = {
+      id: `custom-match-${Date.now()}`,
+      name: `⚡ Стратегия под ${match.homeTeam} (${match.minute}')`,
+      description: `Создано на основе параметров игры ${match.homeTeam} vs ${match.awayTeam} (${match.score[0]}:${match.score[1]}, ${match.minute}')`,
+      category: 'custom',
+      enabled: true,
+      minMinute: Math.max(0, match.minute - 10),
+      maxMinute: Math.min(90, match.minute + 15),
+      scoreCondition:
+        match.score[0] === match.score[1]
+          ? match.score[0] === 0
+            ? '0-0'
+            : 'DRAW'
+          : Math.abs(match.score[0] - match.score[1]) === 1
+          ? 'ONE_GOAL_DIFF'
+          : 'ANY',
+      minDangerousAttacksDiff: dangDiff >= 10 ? dangDiff - 5 : 10,
+      minTotalShots: totalShots >= 5 ? totalShots - 2 : undefined,
+      minShotsOnTargetTotal: totalSot >= 3 ? totalSot - 1 : undefined,
+      minTotalCorners: totalCorners >= 4 ? totalCorners - 1 : undefined,
+      minXgTotal: totalXg >= 1 ? Number((totalXg * 0.8).toFixed(1)) : undefined,
+      minPressureIndex: Math.max(40, analysis.pressureIndex - 10),
+      redCardCondition:
+        match.stats.redCards[0] > 0 || match.stats.redCards[1] > 0 ? 'HAS_RED_CARD' : 'ANY',
+      targetMarket:
+        match.score[0] + match.score[1] === 0
+          ? 'ТБ 0.5 в матче'
+          : 'Следующий гол / ТБ',
+      telegramEnabled: true,
+      color: 'emerald',
+      isPreset: false,
+    };
+
+    setEditingFilter(customRule);
+    setIsFilterModalOpen(true);
+  };
+
   const handleResetFilters = () => {
     if (window.confirm('Сбросить все фильтры к расширенным заводским алгоритмам? Все пользовательские изменения будут сброшены.')) {
       setFilters(EXPANDED_DEFAULT_FILTERS);
@@ -877,7 +1330,59 @@ export default function App() {
         </div>
 
         {/* Global Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Data Sources / Real Matches Trigger */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+            <button
+              id="open-datasources-btn"
+              onClick={() => setIsDataSourcesModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-200 hover:text-white hover:bg-slate-800 transition"
+              title="Открыть настройку источников данных (Public Live Feed, API-Football, Webhook)"
+            >
+              <Globe className="h-3.5 w-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">
+                {dataSourceConfig.activeSource === 'flashscore'
+                  ? '⚡ Flashscore Live'
+                  : dataSourceConfig.activeSource === 'sstats'
+                  ? '📊 SStats.net'
+                  : dataSourceConfig.activeSource === 'sofascore'
+                  ? '⚽ Sofascore'
+                  : dataSourceConfig.activeSource === 'public-feed'
+                  ? 'Public Live Feed'
+                  : dataSourceConfig.activeSource === 'api-football'
+                  ? 'API-Football'
+                  : dataSourceConfig.activeSource === 'football-data'
+                  ? 'Football-Data'
+                  : dataSourceConfig.activeSource === 'webhook'
+                  ? 'Webhook Feed'
+                  : 'Демо-симулятор'}
+              </span>
+              <span className="sm:hidden">Фид</span>
+            </button>
+            <button
+              onClick={() => fetchLiveMatchesFromSource()}
+              disabled={isRefreshingMatches}
+              className="p-1.5 rounded-md text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition disabled:opacity-50"
+              title="Синхронизировать реальные live-матчи прямо сейчас"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingMatches ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
+
+          {/* Real Match Lab / Tester */}
+          <button
+            id="open-real-match-tester-btn"
+            onClick={() => setIsRealMatchTesterOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-sm transition hover:scale-[1.02] active:scale-[0.98]"
+            title="Протестировать любой реальный матч из БК или Flashscore на всех 35 стратегиях"
+          >
+            <FlaskConical className="h-3.5 w-3.5 text-amber-400" />
+            <span>Тест матча</span>
+            <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-[10px] font-extrabold uppercase">
+              LAB
+            </span>
+          </button>
+
           <button
             id="toggle-monitoring-btn"
             onClick={() => setIsMonitoringActive(!isMonitoringActive)}
@@ -888,16 +1393,17 @@ export default function App() {
             }`}
           >
             {isMonitoringActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-            {isMonitoringActive ? 'Парсинг активен' : 'Пауза мониторинга'}
+            <span className="hidden sm:inline">{isMonitoringActive ? 'Мониторинг активен' : 'Пауза'}</span>
           </button>
 
           <button
             id="send-test-signal-btn"
             onClick={triggerTestSignal}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 transition-colors"
+            title="Отправить тестовый сигнал в настроенный Telegram канал"
           >
             <Send className="h-3.5 w-3.5" />
-            Тест в Telegram
+            <span className="hidden sm:inline">Тест в TG</span>
           </button>
 
           <button
@@ -907,10 +1413,23 @@ export default function App() {
             title="Запустить мгновенный AI-анализ матча"
           >
             <Sparkles className="h-3.5 w-3.5 text-indigo-200 animate-pulse" />
-            AI-Аналитик
+            <span>AI-Аналитик</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-800" />
+          <button
+            id="create-filter-header-btn"
+            onClick={() => {
+              setEditingFilter(null);
+              setIsFilterModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40 border border-emerald-500/40 transition hover:scale-[1.02] active:scale-[0.98]"
+            title="Создать и настроить собственный алгоритм фильтрации"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Новый фильтр</span>
+          </button>
+
+          <div className="h-4 w-px bg-slate-800 hidden md:block" />
 
           {/* Navigation tabs */}
           <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
@@ -962,15 +1481,37 @@ export default function App() {
       <div className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
         {/* Status Bar */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+          <div
+            onClick={() => setIsDataSourcesModalOpen(true)}
+            className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 rounded-xl p-4 flex items-center justify-between cursor-pointer transition group"
+            title="Нажмите, чтобы переключить источник (Public Live Feed, API-Football, Webhook)"
+          >
             <div className="space-y-1">
-              <span className="text-xs text-slate-400">Провайдеры данных</span>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-sm font-semibold text-white">Flashscore + SStats</span>
+              <div className="flex items-center gap-1 text-xs text-slate-400 group-hover:text-cyan-300 transition">
+                <span>Провайдер данных</span>
+                <span className="text-[10px] text-cyan-400 font-mono">⚙</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${
+                  dataSourceConfig.activeSource !== 'simulated' ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400 animate-ping'
+                }`} />
+                <span className="text-sm font-semibold text-white">
+                  {dataSourceConfig.activeSource === 'public-feed'
+                    ? 'Public Live Feed'
+                    : dataSourceConfig.activeSource === 'api-football'
+                    ? 'API-Football Live'
+                    : dataSourceConfig.activeSource === 'webhook'
+                    ? 'Webhook Stream'
+                    : 'Flashscore Demo'}
+                </span>
+              </div>
+              {lastFetchedAt && (
+                <div className="text-[10px] text-slate-500">
+                  Обновлено: {lastFetchedAt}
+                </div>
+              )}
             </div>
-            <Activity className="h-6 w-6 text-emerald-400/50" />
+            <Globe className="h-6 w-6 text-cyan-400/50 group-hover:text-cyan-400 transition" />
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
@@ -998,12 +1539,28 @@ export default function App() {
           </div>
         </div>
 
+        {/* Data Source Error Banner */}
+        {dataSourceError && (
+          <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-rose-300">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+              <span>{dataSourceError}</span>
+            </div>
+            <button
+              onClick={() => setDataSourceError(null)}
+              className="text-slate-400 hover:text-white text-xs px-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Tab 1: Live Matches & Detailed In-Play Analytics */}
         {activeTab === 'matches' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Matches list (5 cols) */}
             <div className="lg:col-span-5 space-y-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-2">
                 <div className="relative flex-1">
                   <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -1015,6 +1572,48 @@ export default function App() {
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
+
+                <button
+                  onClick={() => setIsRealMatchTesterOpen(true)}
+                  className="px-2.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1 transition shrink-0"
+                  title="Открыть лабораторию тестирования реального матча"
+                >
+                  <FlaskConical className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Тестер</span>
+                </button>
+
+                <button
+                  onClick={() => fetchLiveMatchesFromSource()}
+                  disabled={isRefreshingMatches}
+                  className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-slate-700 transition shrink-0 disabled:opacity-50"
+                  title="Обновить live-матчи"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshingMatches ? 'animate-spin text-emerald-400' : ''}`} />
+                </button>
+              </div>
+
+              {/* Feed mode indicator bar */}
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-lg px-3 py-1.5 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${dataSourceConfig.activeSource !== 'simulated' ? 'bg-cyan-400' : 'bg-emerald-400'}`} />
+                  <span>
+                    Источник: <strong className="text-slate-200">{
+                      dataSourceConfig.activeSource === 'flashscore' ? '⚡ Flashscore Live (Парсер)' :
+                      dataSourceConfig.activeSource === 'sstats' ? '📊 SStats.net API' :
+                      dataSourceConfig.activeSource === 'sofascore' ? '⚽ Sofascore Live' :
+                      dataSourceConfig.activeSource === 'public-feed' ? 'Реальный онлайн-фид' :
+                      dataSourceConfig.activeSource === 'api-football' ? 'API-Football' :
+                      dataSourceConfig.activeSource === 'football-data' ? 'Football-Data.org' :
+                      dataSourceConfig.activeSource === 'webhook' ? 'Webhook' : 'Демо-симулятор'
+                    }</strong>
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsDataSourcesModalOpen(true)}
+                  className="text-cyan-400 hover:underline font-medium text-[10px]"
+                >
+                  Сменить / Настроить →
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -1053,6 +1652,17 @@ export default function App() {
                           >
                             <Sparkles className="h-2.5 w-2.5 text-indigo-400" />
                             AI
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateFilterFromMatch(match);
+                            }}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/40 text-[10px] font-semibold flex items-center gap-1 transition"
+                            title="Создать алгоритм фильтрации по текущей статистике этого матча"
+                          >
+                            <Sliders className="h-2.5 w-2.5 text-emerald-400" />
+                            Фильтр
                           </button>
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold text-[11px] border border-emerald-500/20">
                             {match.minute}'
@@ -1157,6 +1767,16 @@ export default function App() {
 
                     <div className="flex flex-col items-end gap-2">
                       <div className="flex items-center gap-2">
+                        <button
+                          id="match-inspector-create-filter-btn"
+                          onClick={() => handleCreateFilterFromMatch(selectedMatch)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center gap-1.5 border border-slate-700 hover:border-emerald-500/50 transition active:scale-[0.98]"
+                          title="Создать собственный фильтр по текущим показателям этого матча"
+                        >
+                          <Sliders className="h-3.5 w-3.5 text-emerald-400" />
+                          <span>Создать фильтр по матчу</span>
+                        </button>
+
                         <button
                           id="match-inspector-ai-btn"
                           onClick={() => handleOpenAIAnalyst(selectedMatch)}
@@ -1286,14 +1906,37 @@ export default function App() {
                                     )}
                                   </div>
                                 </div>
-                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                                  result.matches ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
-                                }`}>
-                                  {result.matches ? 'СИГНАЛ' : 'НЕТ'}
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingFilter(rule);
+                                      setIsFilterModalOpen(true);
+                                    }}
+                                    className="p-1 rounded bg-slate-850 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/60 transition"
+                                    title="Настроить параметры этого фильтра"
+                                  >
+                                    <Sliders className="h-3 w-3 text-emerald-400" />
+                                  </button>
+                                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                                    result.matches ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
+                                  }`}>
+                                    {result.matches ? 'СИГНАЛ' : 'НЕТ'}
+                                  </span>
+                                </div>
                               </div>
                             ))}
                           </div>
+                          <button
+                            onClick={() => {
+                              setEditingFilter(null);
+                              setIsFilterModalOpen(true);
+                            }}
+                            className="w-full mt-2.5 py-1.5 px-3 rounded-lg border border-dashed border-slate-700 hover:border-emerald-500/80 text-slate-400 hover:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-slate-900/40 hover:bg-slate-900"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-emerald-400" />
+                            Создать новый фильтр под этот матч
+                          </button>
                         </div>
                       </div>
                     );
@@ -1533,6 +2176,153 @@ export default function App() {
               </div>
             </div>
 
+            {/* Quick Strategy Templates Banner */}
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  Быстрый старт: популярные шаблоны алгоритмов для настройки
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Кликните по шаблону для открытия конструктора с готовыми параметрами
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    name: '🔥 Штурм (75-90\')',
+                    desc: 'Навал в концовке',
+                    preset: {
+                      name: '🔥 Штурм в концовке (75-90\')',
+                      description: 'Интенсивный навал в заключительные 15 минут матча при высокой активности',
+                      category: 'pressure' as FilterCategory,
+                      minMinute: 75,
+                      maxMinute: 90,
+                      scoreCondition: 'ANY' as ScoreCondition,
+                      minDangerousAttacksDiff: 18,
+                      minDangerousAttacksTotal: 45,
+                      minTotalShots: 10,
+                      minShotsOnTargetTotal: 4,
+                      minTotalCorners: 6,
+                      minPressureIndex: 65,
+                      targetMarket: 'ТБ 0.5 во 2-м тайме / Гол в концовке',
+                      color: 'rose',
+                    },
+                  },
+                  {
+                    name: '⚽ 0:0 Доминация',
+                    desc: 'Сухой фаворит',
+                    preset: {
+                      name: '⚽ Сухое доминирование при 0:0',
+                      description: 'Матч без голов во 2-м тайме, где одна из команд создала огромный перевес',
+                      category: 'goals' as FilterCategory,
+                      minMinute: 60,
+                      maxMinute: 85,
+                      scoreCondition: '0-0' as ScoreCondition,
+                      minDangerousAttacksDiff: 22,
+                      minTotalShots: 8,
+                      minShotsOnTargetTotal: 4,
+                      minXgTotal: 1.2,
+                      minPressureIndex: 60,
+                      targetMarket: 'ТБ 0.5 в матче / Победа фаворита',
+                      color: 'emerald',
+                    },
+                  },
+                  {
+                    name: '🚩 Осада угловыми',
+                    desc: 'Угловые ТБ',
+                    preset: {
+                      name: '🚩 Серия угловых и осада ворот',
+                      description: 'Частые навесы, рикошеты и шквал стандартов у ворот соперника',
+                      category: 'corners' as FilterCategory,
+                      minMinute: 65,
+                      maxMinute: 90,
+                      scoreCondition: 'ANY' as ScoreCondition,
+                      minDangerousAttacksDiff: 15,
+                      minTotalCorners: 8,
+                      minCornersDiff: 3,
+                      minTotalShots: 10,
+                      minPressureIndex: 55,
+                      targetMarket: 'Тотал больше угловых',
+                      color: 'blue',
+                    },
+                  },
+                  {
+                    name: '🎯 Камбэк фаворита',
+                    desc: '1X / Фора 0',
+                    preset: {
+                      name: '🎯 Камбэк уступающего фаворита',
+                      description: 'Фаворит уступает в 1 мяч при колоссальном перевесе по статистике',
+                      category: 'comeback' as FilterCategory,
+                      minMinute: 55,
+                      maxMinute: 88,
+                      scoreCondition: 'AWAY_LEAD' as ScoreCondition,
+                      minDangerousAttacksDiff: 24,
+                      minShotsOnTargetTotal: 5,
+                      minPossessionDiff: 15,
+                      minPressureIndex: 70,
+                      targetMarket: '1X (двойной шанс) / Гол Хозяев',
+                      color: 'amber',
+                    },
+                  },
+                  {
+                    name: '⏱️ 1-й тайм (HT Over)',
+                    desc: 'Гол до перерыва',
+                    preset: {
+                      name: '⏱️ Открытая игра в 1-м тайме (HT Over)',
+                      description: 'Высокий темп опасных атак и ударов в створ до 45-й минуты',
+                      category: 'halftime' as FilterCategory,
+                      minMinute: 25,
+                      maxMinute: 45,
+                      scoreCondition: '0-0' as ScoreCondition,
+                      minDangerousAttacksTotal: 40,
+                      minTotalShots: 7,
+                      minShotsOnTargetTotal: 3,
+                      minPressureIndex: 50,
+                      targetMarket: 'ТБ 0.5 в 1-м тайме',
+                      color: 'cyan',
+                    },
+                  },
+                  {
+                    name: '🟥 В большинстве',
+                    desc: '11 vs 10',
+                    preset: {
+                      name: '🟥 Прессинг в численном большинстве',
+                      description: 'Команда играет в большинстве после удаления и наращивает давление',
+                      category: 'cards' as FilterCategory,
+                      minMinute: 45,
+                      maxMinute: 90,
+                      scoreCondition: 'DRAW' as ScoreCondition,
+                      redCardCondition: 'HAS_RED_CARD' as const,
+                      minDangerousAttacksDiff: 15,
+                      minPressureIndex: 60,
+                      targetMarket: 'Победа команды в большинстве',
+                      color: 'purple',
+                    },
+                  },
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setEditingFilter({
+                        id: `custom-${Date.now()}`,
+                        enabled: true,
+                        telegramEnabled: true,
+                        isPreset: false,
+                        ...item.preset,
+                      });
+                      setIsFilterModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/40 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+                  >
+                    <span className="font-semibold">{item.name}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">({item.desc})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Category Filter Chips & Search Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
               <div className="flex flex-wrap gap-1.5">
@@ -1660,9 +2450,13 @@ export default function App() {
                                   {filter.category}
                                 </span>
                               )}
-                              {filter.isPreset && (
+                              {filter.isPreset ? (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                   Пресет
+                                </span>
+                              ) : (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                                  Авторский
                                 </span>
                               )}
                             </div>
@@ -1774,6 +2568,66 @@ export default function App() {
                                 <span>≥ {filter.minXgTotal}</span>
                               </div>
                             )}
+                            {filter.minAttacksDiff && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Разница атак:</span>
+                                <span>≥ {filter.minAttacksDiff}</span>
+                              </div>
+                            )}
+                            {filter.minShotsDiff && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Разница ударов:</span>
+                                <span>≥ {filter.minShotsDiff}</span>
+                              </div>
+                            )}
+                            {filter.maxOddsFavorite && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Кэф фаворита:</span>
+                                <span className="text-emerald-400 font-bold">≤ {filter.maxOddsFavorite.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(filter.minOddsOver25 || filter.maxOddsOver25) && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Кэф ТБ 2.5:</span>
+                                <span className="text-emerald-400">
+                                  {filter.minOddsOver25 ? `${filter.minOddsOver25.toFixed(2)} – ` : '≤ '}
+                                  {filter.maxOddsOver25 ? filter.maxOddsOver25.toFixed(2) : ''}
+                                </span>
+                              </div>
+                            )}
+                            {(filter.minOddsBtts || filter.maxOddsBtts) && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Кэф ОЗ:</span>
+                                <span className="text-sky-400">
+                                  {filter.minOddsBtts ? `${filter.minOddsBtts.toFixed(2)} – ` : '≤ '}
+                                  {filter.maxOddsBtts ? filter.maxOddsBtts.toFixed(2) : ''}
+                                </span>
+                              </div>
+                            )}
+                            {filter.minModelIpt && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Модель IPT:</span>
+                                <span className="text-amber-400 font-bold">&gt; {filter.minModelIpt}</span>
+                              </div>
+                            )}
+                            {filter.excludeYouthAndWomen && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Лиги:</span>
+                                <span className="text-purple-400">Без молодежек/женских</span>
+                              </div>
+                            )}
+                            {filter.minOver25Streak && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Серия ТБ 2.5:</span>
+                                <span className="text-purple-300 font-bold">≥ {filter.minOver25Streak} матчей</span>
+                              </div>
+                            )}
+                            {filter.redCardCondition === 'NO_RED_CARDS' && (
+                              <div className="flex justify-between border-b border-slate-800/60 pb-1">
+                                <span className="text-slate-500 font-sans">Составы:</span>
+                                <span className="text-emerald-400">Строго 11 vs 11</span>
+                              </div>
+                            )}
                             {filter.redCardCondition === 'HAS_RED_CARD' && (
                               <div className="flex justify-between border-b border-slate-800/60 pb-1">
                                 <span className="text-slate-500 font-sans">Красная карточка:</span>
@@ -1804,16 +2658,17 @@ export default function App() {
                           </div>
 
                           {/* Edit / Clone / Delete buttons */}
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => {
                                 setEditingFilter(filter);
                                 setIsFilterModalOpen(true);
                               }}
-                              title="Редактировать фильтр"
-                              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-medium text-xs flex items-center gap-1 border border-slate-700 hover:border-emerald-500/40 transition"
+                              title="Настроить критерии фильтра"
                             >
-                              <Edit3 className="h-3.5 w-3.5" />
+                              <Sliders className="h-3 w-3 text-emerald-400" />
+                              <span>Настроить</span>
                             </button>
 
                             <button
@@ -2699,6 +3554,50 @@ export default function App() {
               messageId: res.messageId,
               error: res.error,
             };
+          }}
+        />
+
+        {/* Data Sources & Real Match Feed Modal */}
+        <DataSourcesModal
+          isOpen={isDataSourcesModalOpen}
+          onClose={() => setIsDataSourcesModalOpen(false)}
+          config={dataSourceConfig}
+          onUpdateConfig={(newConfig) => {
+            setDataSourceConfig(newConfig);
+            if (newConfig.activeSource !== dataSourceConfig.activeSource) {
+              fetchLiveMatchesFromSource(newConfig.activeSource);
+            }
+          }}
+          activeMatchesCount={matches.length}
+          onRefreshMatches={async () => {
+            await fetchLiveMatchesFromSource();
+          }}
+          isRefreshing={isRefreshingMatches}
+          lastFetchedAt={lastFetchedAt}
+        />
+
+        {/* Real Match Live Tester & Scenario Lab */}
+        <RealMatchTesterModal
+          isOpen={isRealMatchTesterOpen}
+          onClose={() => setIsRealMatchTesterOpen(false)}
+          currentMatches={matches}
+          filters={filters}
+          onSendTelegramAlert={async (targetMatch, rule) => {
+            const analysis = calculatePressureAnalysis(targetMatch);
+            const msgHtml = formatExtendedTelegramAlert(targetMatch, rule, analysis);
+            const res = await sendTelegramMessage(msgHtml, false);
+            return {
+              ok: res.ok,
+              messageId: res.messageId,
+              error: res.error,
+            };
+          }}
+          onOpenAIAnalyst={(targetMatch) => {
+            setIsRealMatchTesterOpen(false);
+            handleOpenAIAnalyst(targetMatch);
+          }}
+          onAddMatchToLive={(newMatch) => {
+            handleAddMatchToLive(newMatch);
           }}
         />
       </div>

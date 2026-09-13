@@ -3,6 +3,17 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import {
+  fetchFlashscoreLiveMatches,
+  fetchSstatsLiveMatches,
+  fetchSofascoreLiveMatches,
+  fetchPublicLiveMatches,
+  fetchApiFootballMatches,
+  fetchFootballDataMatches,
+  ingestMatchesFromWebhook,
+  getIngestedMatches,
+  clearIngestedMatches,
+} from './server/dataSources';
 
 dotenv.config();
 
@@ -524,6 +535,313 @@ async function startServer() {
       ok: true,
       analysis: heuristicResult,
     });
+  });
+
+  // ==========================================
+  // EXTERNAL DATA SOURCES API ENDPOINTS
+  // ==========================================
+
+  // 1. Get configuration status for real data sources
+  app.get('/api/datasources/config', (req, res) => {
+    res.json({
+      ok: true,
+      apiFootball: {
+        serverConfigured: Boolean(process.env.API_FOOTBALL_KEY),
+        provider: process.env.API_FOOTBALL_PROVIDER || 'api-sports',
+      },
+      footballData: {
+        serverConfigured: Boolean(process.env.FOOTBALL_DATA_TOKEN),
+      },
+      webhook: {
+        serverConfigured: Boolean(process.env.FEED_WEBHOOK_SECRET),
+        endpoint: '/api/feed/ingest',
+      },
+      publicFeed: {
+        available: true,
+        description: 'Открытый онлайн-фид реальных матчей (EPL, LaLiga, Serie A, Bundesliga, Champions League)',
+      },
+    });
+  });
+
+  // 2. Fetch live matches from specified external data source
+  app.get('/api/datasources/live', async (req, res) => {
+    const source = (req.query.source as string) || 'flashscore';
+    const apiKey = (req.query.api_key as string) || process.env.API_FOOTBALL_KEY || '';
+    const provider = ((req.query.provider as string) || process.env.API_FOOTBALL_PROVIDER || 'api-sports') as 'api-sports' | 'rapidapi';
+    const leagues = (req.query.leagues as string) || '';
+    const footballToken = (req.query.football_data_token as string) || process.env.FOOTBALL_DATA_TOKEN || '';
+    const sstatsKey = (req.query.sstats_key as string) || process.env.SSTATS_KEY || '';
+
+    try {
+      if (source === 'flashscore') {
+        const result = await fetchFlashscoreLiveMatches();
+        if (!result.ok && result.matches.length === 0) {
+          return res.status(400).json(result);
+        }
+        return res.json({
+          ok: true,
+          source: 'Flashscore',
+          count: result.matches.length,
+          matches: result.matches,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'sstats') {
+        const result = await fetchSstatsLiveMatches({ apiKey: sstatsKey });
+        if (!result.ok && result.matches.length === 0) {
+          return res.status(400).json(result);
+        }
+        return res.json({
+          ok: true,
+          source: 'SStats',
+          count: result.matches.length,
+          matches: result.matches,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'sofascore') {
+        const result = await fetchSofascoreLiveMatches();
+        if (!result.ok && result.matches.length === 0) {
+          return res.status(400).json(result);
+        }
+        return res.json({
+          ok: true,
+          source: 'Sofascore',
+          count: result.matches.length,
+          matches: result.matches,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'api-football') {
+        if (!apiKey) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Ключ API-Football не настроен. Введите его в панели источников или укажите API_FOOTBALL_KEY в .env',
+          });
+        }
+        const result = await fetchApiFootballMatches({ apiKey, provider, leaguesFilter: leagues });
+        if (!result.ok) {
+          return res.status(400).json(result);
+        }
+        return res.json({
+          ok: true,
+          source: 'API-Football',
+          count: result.matches.length,
+          matches: result.matches,
+          remainingQuota: result.remainingQuota,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'football-data') {
+        if (!footballToken) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Токен Football-Data.org не настроен. Введите его в панели источников или укажите FOOTBALL_DATA_TOKEN в .env',
+          });
+        }
+        const result = await fetchFootballDataMatches(footballToken);
+        if (!result.ok) {
+          return res.status(400).json(result);
+        }
+        return res.json({
+          ok: true,
+          source: 'Football-Data',
+          count: result.matches.length,
+          matches: result.matches,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'webhook') {
+        const result = getIngestedMatches();
+        return res.json({
+          ok: true,
+          source: 'Custom-Webhook',
+          count: result.matches.length,
+          matches: result.matches,
+          lastIngestedAt: result.lastIngestedAt,
+          totalReceived: result.totalReceived,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      if (source === 'public-feed') {
+        const publicResult = await fetchPublicLiveMatches();
+        return res.json({
+          ok: true,
+          source: 'Public-Feed',
+          count: publicResult.matches.length,
+          matches: publicResult.matches,
+          fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+        });
+      }
+
+      // Default fallback: Flashscore Live
+      const defaultResult = await fetchFlashscoreLiveMatches();
+      return res.json({
+        ok: true,
+        source: 'Flashscore',
+        count: defaultResult.matches.length,
+        matches: defaultResult.matches,
+        fetchedAt: new Date().toLocaleTimeString('ru-RU'),
+      });
+    } catch (err: any) {
+      console.error('Error fetching live matches:', err);
+      return res.status(500).json({
+        ok: false,
+        error: `Ошибка при получении данных: ${err?.message || err}`,
+      });
+    }
+  });
+
+  // 3. Test external connection & measure latency
+  app.post('/api/datasources/test', async (req, res) => {
+    const { source, apiKey, provider = 'api-sports', token, sstatsKey } = req.body;
+    const start = Date.now();
+
+    try {
+      if (source === 'flashscore') {
+        const result = await fetchFlashscoreLiveMatches();
+        const latencyMs = Date.now() - start;
+        if (!result.ok) {
+          return res.status(400).json({ ok: false, latencyMs, error: result.error });
+        }
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          message: `Flashscore Live подключен (${latencyMs}ms). Обнаружено ${result.matches.length} текущих матчей в прямом эфире без ограничений.`,
+        });
+      }
+
+      if (source === 'sstats') {
+        const result = await fetchSstatsLiveMatches({ apiKey: sstatsKey });
+        const latencyMs = Date.now() - start;
+        if (!result.ok) {
+          return res.status(400).json({ ok: false, latencyMs, error: result.error });
+        }
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          message: `SStats.net API подключен (${latencyMs}ms). Получено ${result.matches.length} текущих матчей с букмекерскими коэффициентами.`,
+        });
+      }
+
+      if (source === 'sofascore') {
+        const result = await fetchSofascoreLiveMatches();
+        const latencyMs = Date.now() - start;
+        if (!result.ok) {
+          return res.status(400).json({ ok: false, latencyMs, error: result.error });
+        }
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          message: `Sofascore Live подключен (${latencyMs}ms). Обнаружено ${result.matches.length} матчей.`,
+        });
+      }
+
+      if (source === 'api-football') {
+        const key = apiKey || process.env.API_FOOTBALL_KEY;
+        if (!key) {
+          return res.status(400).json({ ok: false, error: 'API-Football ключ отсутствует' });
+        }
+        const result = await fetchApiFootballMatches({ apiKey: key, provider });
+        const latencyMs = Date.now() - start;
+
+        if (!result.ok) {
+          return res.status(400).json({ ok: false, latencyMs, error: result.error });
+        }
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          remainingQuota: result.remainingQuota || 'Активна',
+          message: `Соединение успешно (${latencyMs}ms). Обнаружено ${result.matches.length} live-матчей в реальном времени.`,
+        });
+      }
+
+      if (source === 'football-data') {
+        const tok = token || process.env.FOOTBALL_DATA_TOKEN;
+        if (!tok) {
+          return res.status(400).json({ ok: false, error: 'Токен Football-Data.org отсутствует' });
+        }
+        const result = await fetchFootballDataMatches(tok);
+        const latencyMs = Date.now() - start;
+
+        if (!result.ok) {
+          return res.status(400).json({ ok: false, latencyMs, error: result.error });
+        }
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          message: `Соединение успешно (${latencyMs}ms). Загружено ${result.matches.length} текущих матчей.`,
+        });
+      }
+
+      if (source === 'public-feed') {
+        const result = await fetchPublicLiveMatches();
+        const latencyMs = Date.now() - start;
+        return res.json({
+          ok: true,
+          latencyMs,
+          matchesFound: result.matches.length,
+          message: `Открытый фид подключен (${latencyMs}ms). Обнаружено ${result.matches.length} реальных матчей из европейских топ-лиг.`,
+        });
+      }
+
+      return res.status(400).json({ ok: false, error: 'Неизвестный источник для тестирования' });
+    } catch (err: any) {
+      return res.status(500).json({
+        ok: false,
+        latencyMs: Date.now() - start,
+        error: `Сетевой сбой при тестировании: ${err?.message || err}`,
+      });
+    }
+  });
+
+  // 4. Webhook Ingestion API for Custom Scrapers / Telegram Bots / Python Scripts
+  app.post('/api/feed/ingest', (req, res) => {
+    const secretHeader = (req.headers['x-webhook-secret'] as string) || (req.query.secret as string);
+    const expectedSecret = process.env.FEED_WEBHOOK_SECRET;
+
+    const result = ingestMatchesFromWebhook(req.body, secretHeader, expectedSecret);
+    if (!result.ok) {
+      return res.status(401).json(result);
+    }
+
+    const state = getIngestedMatches();
+    return res.json({
+      ok: true,
+      message: `Успешно принято ${result.count} матчей`,
+      ingestedCount: result.count,
+      totalInFeed: state.matches.length,
+      lastIngestedAt: state.lastIngestedAt,
+    });
+  });
+
+  // 5. Get current webhook matches status
+  app.get('/api/feed/ingest', (req, res) => {
+    const state = getIngestedMatches();
+    res.json({
+      ok: true,
+      count: state.matches.length,
+      lastIngestedAt: state.lastIngestedAt,
+      totalReceived: state.totalReceived,
+      matches: state.matches,
+    });
+  });
+
+  // 6. Clear webhook ingested feed
+  app.delete('/api/feed/ingest', (req, res) => {
+    const result = clearIngestedMatches();
+    res.json({ ok: true, message: 'Фид пользовательских матчей очищен' });
   });
 
   // Vite middleware for development or static serving for production

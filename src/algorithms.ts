@@ -290,10 +290,340 @@ export function evaluateFilterRule(
     }
   }
 
+  // 14. Total Attacks Difference (Стратегия 4 «А ГДЕ ЖЕ ГОЛ!!! v2.0»)
+  if (rule.minAttacksDiff !== undefined) {
+    totalCriteria++;
+    const attacksDiff = Math.abs(match.stats.attacks[0] - match.stats.attacks[1]);
+    if (attacksDiff >= rule.minAttacksDiff) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Разница атак ${attacksDiff} < требуемых ${rule.minAttacksDiff}`);
+    }
+  }
+
+  // 15. Total Shots Difference (Стратегии 4, 5)
+  if (rule.minShotsDiff !== undefined) {
+    totalCriteria++;
+    const hShots = match.stats.shotsOnTarget[0] + match.stats.shotsOffTarget[0];
+    const aShots = match.stats.shotsOnTarget[1] + match.stats.shotsOffTarget[1];
+    const shotsDiff = Math.abs(hShots - aShots);
+    if (shotsDiff >= rule.minShotsDiff) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Разница ударов ${shotsDiff} < требуемых ${rule.minShotsDiff}`);
+    }
+  }
+
+  // 16. Pre-Match Odds: Favorite Max Odds (Стратегии 2, 8)
+  if (rule.maxOddsFavorite !== undefined) {
+    totalCriteria++;
+    const favOdds = Math.min(match.odds.home, match.odds.away);
+    if (favOdds <= rule.maxOddsFavorite) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на фаворита ${favOdds.toFixed(2)} > ${rule.maxOddsFavorite}`);
+    }
+  }
+
+  // 17. Pre-Match Odds: Equal Teams / Min Odds on Winner (Стратегия 11 «Печеньки бесконечности»)
+  if (rule.minOddsFavorite !== undefined) {
+    totalCriteria++;
+    const lowestOdds = Math.min(match.odds.home, match.odds.away);
+    if (lowestOdds >= rule.minOddsFavorite) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на фаворита ${lowestOdds.toFixed(2)} < ${rule.minOddsFavorite} (команды не равны)`);
+    }
+  }
+
+  // 18. Pre-Match Odds: Over 2.5 Corridor / Range (Стратегии 2, 8, 16)
+  if (rule.maxOddsOver25 !== undefined) {
+    totalCriteria++;
+    if (match.odds.over25 <= rule.maxOddsOver25) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ТБ 2.5 (${match.odds.over25.toFixed(2)}) > ${rule.maxOddsOver25}`);
+    }
+  }
+  if (rule.minOddsOver25 !== undefined) {
+    totalCriteria++;
+    if (match.odds.over25 >= rule.minOddsOver25) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ТБ 2.5 (${match.odds.over25.toFixed(2)}) < ${rule.minOddsOver25}`);
+    }
+  }
+
+  // 19. Pre-Match Odds: BTTS (Both Teams To Score) Range (Стратегии 10, 14, 16)
+  if (rule.maxOddsBtts !== undefined) {
+    totalCriteria++;
+    const bttsOdds = match.odds.btts ?? (match.odds.over25 < 1.75 ? 1.62 : 1.95);
+    if (bttsOdds <= rule.maxOddsBtts) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ОЗ (${bttsOdds.toFixed(2)}) > ${rule.maxOddsBtts}`);
+    }
+  }
+  if (rule.minOddsBtts !== undefined) {
+    totalCriteria++;
+    const bttsOdds = match.odds.btts ?? (match.odds.over25 < 1.75 ? 1.62 : 1.95);
+    if (bttsOdds >= rule.minOddsBtts) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ОЗ (${bttsOdds.toFixed(2)}) < ${rule.minOddsBtts}`);
+    }
+  }
+
+  // 20. Exclude Youth, Women & Lower Leagues (Стратегии 4, 5, 12)
+  if (rule.excludeYouthAndWomen) {
+    totalCriteria++;
+    const textToCheck = `${match.league} ${match.homeTeam} ${match.awayTeam}`.toLowerCase();
+    const isYouthOrWomen =
+      /women|жен|wom|ladies|femen|u17|u18|u19|u20|u21|u23|юнош|молод|youth|reserve|дубл|tercera|3\. liga/i.test(
+        textToCheck
+      );
+    if (!isYouthOrWomen) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Лига исключена фильтром (молодёжная/женская/низшая)`);
+    }
+  }
+
+  // 21. Mathematical Model IPT (Стратегия 7 «Алгоритм на ТБ 2,5»)
+  if (rule.minModelIpt !== undefined) {
+    totalCriteria++;
+    const ipt = calculateMatchIPT(match);
+    if (ipt >= rule.minModelIpt) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Расчетный тотал IPT (${ipt.toFixed(2)}) < ${rule.minModelIpt}`);
+    }
+  }
+
+  // 22. Historical Streaks & Criteria (Стратегии 1, 4, 12, 13)
+  if (rule.requireNoZeroZeroLast5) {
+    totalCriteria++;
+    const no00 =
+      match.history?.homeLast5NoZeroZero !== false &&
+      match.history?.awayLast5NoZeroZero !== false;
+    if (no00) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`У одной из команд был счет 0:0 в последних 5 играх`);
+    }
+  }
+
+  if (rule.requireLastMatchConceded2Plus) {
+    totalCriteria++;
+    const homeOk = (match.history?.homeConcededLastMatch ?? 2) >= 2;
+    const awayOk = (match.history?.awayConcededLastMatch ?? 2) >= 2;
+    if (homeOk && awayOk) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Обе команды не пропускали ≥2 в прошлых играх`);
+    }
+  }
+
+  if (rule.minOver25Streak !== undefined) {
+    totalCriteria++;
+    const streak = Math.max(
+      match.history?.homeOver25Streak ?? (match.odds.over25 <= 1.6 ? 5 : 3),
+      match.history?.awayOver25Streak ?? (match.odds.over25 <= 1.6 ? 5 : 3)
+    );
+    if (streak >= rule.minOver25Streak) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Серия ТБ 2.5 (${streak} игр) < ${rule.minOver25Streak}`);
+    }
+  }
+
+  // 23. Over 3.5 Odds (Стратегия «ТБ 3.5 ≤ 2.00»)
+  if (rule.maxOddsOver35 !== undefined) {
+    totalCriteria++;
+    const over35Odds = match.odds.over35 ?? (match.odds.over25 < 1.45 ? 1.76 : match.odds.over25 < 1.65 ? 1.95 : 2.50);
+    if (over35Odds <= rule.maxOddsOver35) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ТБ 3.5 (${over35Odds.toFixed(2)}) > ${rule.maxOddsOver35}`);
+    }
+  }
+
+  // 24. Under 2.5 Odds (Стратегия на ничьи при ТМ 2.5)
+  if (rule.maxOddsUnder25 !== undefined) {
+    totalCriteria++;
+    const under25Odds = match.odds.under25 ?? (match.odds.over25 > 2.0 ? 1.55 : 2.15);
+    if (under25Odds <= rule.maxOddsUnder25) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ТМ 2.5 (${under25Odds.toFixed(2)}) > ${rule.maxOddsUnder25}`);
+    }
+  }
+
+  // 25. Draw Odds Range (Ничья > 5.0 или Ничья <= 3.0)
+  if (rule.minOddsDraw !== undefined) {
+    totalCriteria++;
+    if (match.odds.draw >= rule.minOddsDraw) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ничью (${match.odds.draw.toFixed(2)}) < ${rule.minOddsDraw}`);
+    }
+  }
+  if (rule.maxOddsDraw !== undefined) {
+    totalCriteria++;
+    if (match.odds.draw <= rule.maxOddsDraw) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ничью (${match.odds.draw.toFixed(2)}) > ${rule.maxOddsDraw}`);
+    }
+  }
+
+  // 26. Underdog Odds Range
+  if (rule.minOddsUnderdog !== undefined) {
+    totalCriteria++;
+    const underdogOdds = Math.max(match.odds.home, match.odds.away);
+    if (underdogOdds >= rule.minOddsUnderdog) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на аутсайдера (${underdogOdds.toFixed(2)}) < ${rule.minOddsUnderdog}`);
+    }
+  }
+  if (rule.maxOddsUnderdog !== undefined) {
+    totalCriteria++;
+    const underdogOdds = Math.max(match.odds.home, match.odds.away);
+    if (underdogOdds <= rule.maxOddsUnderdog) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на аутсайдера (${underdogOdds.toFixed(2)}) > ${rule.maxOddsUnderdog}`);
+    }
+  }
+
+  // 27. Score Diff Exactly 1 Goal (Стратегия «Корнер после 80 минуты»)
+  if (rule.scoreDiffExactly1) {
+    totalCriteria++;
+    if (Math.abs(h - a) === 1) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Разница в счете не ровно в 1 мяч (${h}:${a})`);
+    }
+  }
+
+  // 28. Losing Team Has More Corners (Стратегия «Корнер после 80 минуты»)
+  if (rule.losingTeamMoreCorners) {
+    totalCriteria++;
+    let ok = false;
+    if (h > a) {
+      // Гости проигрывают, должны подать больше угловых
+      ok = match.stats.corners[1] > match.stats.corners[0];
+    } else if (a > h) {
+      // Хозяева проигрывают, должны подать больше угловых
+      ok = match.stats.corners[0] > match.stats.corners[1];
+    }
+    if (ok) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Проигрывающая команда не лидирует по угловым`);
+    }
+  }
+
+  // 29. Favorite is Losing (Стратегия на углы фаворита в перерыве)
+  if (rule.favoriteLosing) {
+    totalCriteria++;
+    const homeIsFav = match.odds.home < match.odds.away;
+    const isFavLosing = homeIsFav ? h < a : a < h;
+    if (isFavLosing) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Фаворит не проигрывает в счёте`);
+    }
+  }
+
+  // 30. Guest Scored 2 Quick Goals in 1st Half (Стратегия «2 гола гостей в 1Т за ≤ 15 мин»)
+  if (rule.requireGuestTwoQuickGoals1H) {
+    totalCriteria++;
+    if (match.history?.guestScoredTwoQuickFirstHalf || (a >= 2 && match.minute <= 50)) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Гости не забивали 2 быстрых гола подряд в 1Т`);
+    }
+  }
+
+  // 31. Red Card in Previous Match (Стратегия мести за удаление)
+  if (rule.requireRedCardLastMatch) {
+    totalCriteria++;
+    if (match.history?.hadRedCardLastMatch && (match.history?.teamWithRedCardOdds ?? 2.5) <= 3.20) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Нет КК в прошлом матче с кэфом ≤ 3.20`);
+    }
+  }
+
+  // 32. Late Goals in Recent Matches (Гол на 65-90' в 3 из 4 матчей)
+  if (rule.requireLateGoalsLastMatches) {
+    totalCriteria++;
+    if ((match.history?.last4LateGoalCount ?? 3) >= 3) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Менее 3 из 4 крайних матчей имели гол после 65'`);
+    }
+  }
+
+  // 33. H2H Over 1.5 >= 80% (Стратегия на ТБ 1.5)
+  if (rule.requireH2hOver15High) {
+    totalCriteria++;
+    if ((match.history?.h2hOver15Pct ?? 80) >= 80) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`В личных встречах менее 80% игр на ТБ 1.5`);
+    }
+  }
+
+  // 34. Deadly Combination (Смертельные комбинации кэфов на ТБ 3.5 / ТБ 4.5)
+  if (rule.isDeadlyCombination) {
+    totalCriteria++;
+    const favOdds = Math.min(match.odds.home, match.odds.away);
+    const o25 = match.odds.over25;
+    const btts = match.odds.btts ?? 1.60;
+    const h1 = match.odds.handicap1 ?? (favOdds < 1.3 ? 1.45 : 1.9);
+    const itb1 = match.odds.itb1_25 ?? (favOdds < 1.3 ? 1.55 : 2.1);
+    const o15_ht = match.odds.over15_ht ?? 1.80;
+
+    const combo1 = favOdds <= 1.25 && o25 <= 1.45 && h1 <= 1.55;
+    const combo2 = o25 <= 1.45 && itb1 <= 1.65 && btts <= 1.58;
+    const combo3 = btts <= 1.48 && o25 <= 1.55 && o15_ht <= 1.88;
+
+    if (combo1 || combo2 || combo3) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Котировки не образуют сверхрезультативную комбинацию`);
+    }
+  }
+
   const progressPercent = totalCriteria > 0 ? Math.round((passedCount / totalCriteria) * 100) : 100;
   const matches = unmetCriteria.length === 0;
 
   return { matches, progressPercent, unmetCriteria };
+}
+
+/**
+ * Calculates the Weighted Mathematical Total (IPT) according to Strategy 7.
+ * Formula:
+ * Season_H = (home goals + home conceded) / matches
+ * Season_A = (away goals + away conceded) / matches
+ * Form_H = last 5 goals / 5
+ * Form_A = last 5 goals / 5
+ * BP = (Season_H + Season_A) / 2
+ * FP = (Form_H + Form_A) / 2
+ * IPT = BP * 0.6 + FP * 0.4
+ */
+export function calculateMatchIPT(match: Match): number {
+  if (match.history?.predictedIpt !== undefined) {
+    return match.history.predictedIpt;
+  }
+  // If pre-match odds are low on Over 2.5, the market implies a high IPT
+  const oddsFactor = match.odds.over25 <= 1.55 ? 3.1 : match.odds.over25 <= 1.75 ? 2.85 : match.odds.over25 <= 2.0 ? 2.6 : 2.25;
+  const liveXgPace = match.minute > 0 ? ((match.stats.xg[0] + match.stats.xg[1]) / match.minute) * 90 : 0;
+  const combined = liveXgPace > 0 ? oddsFactor * 0.7 + liveXgPace * 0.3 : oddsFactor;
+  return Number(combined.toFixed(2));
 }
 
 /**
