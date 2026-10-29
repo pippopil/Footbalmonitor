@@ -988,6 +988,28 @@ export function evaluateFilterRule(
     }
   }
 
+  // 7c. Shots Off Target Total (Стратегия 70: Все обо всем тест)
+  if (rule.minShotsOffTargetTotal !== undefined) {
+    totalCriteria++;
+    const soff = (soffArr[0] ?? 0) + (soffArr[1] ?? 0);
+    if (soff >= rule.minShotsOffTargetTotal) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Ударов мимо ворот ${soff} < ${rule.minShotsOffTargetTotal}`);
+    }
+  }
+
+  // 7d. Max Total Goals (Стратегия 70: Goals <= 3)
+  if (rule.maxTotalGoals !== undefined) {
+    totalCriteria++;
+    const totalGoals = (match.score?.[0] ?? 0) + (match.score?.[1] ?? 0);
+    if (totalGoals <= rule.maxTotalGoals) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Всего голов ${totalGoals} > ${rule.maxTotalGoals}`);
+    }
+  }
+
   // 8. Corners Total
   if (rule.minTotalCorners !== undefined) {
     totalCriteria++;
@@ -1272,6 +1294,56 @@ export function evaluateFilterRule(
       passedCount++;
     } else {
       unmetCriteria.push(`Падение кэфов < ${rule.minOddsDropPercent ?? 5}% по 15 параметрам`);
+    }
+  }
+
+  // 19d. InPlayGuru Half-Time Stats & Live Odds (Стратегия 71: Кеф 2)
+  if (rule.minHalfTimeDangerousAttacks !== undefined) {
+    totalCriteria++;
+    const htDang = (match.halfTimeStats?.dangerousAttacks?.[0] ?? match.stats?.dangerousAttacks?.[0] ?? 0) +
+                   (match.halfTimeStats?.dangerousAttacks?.[1] ?? match.stats?.dangerousAttacks?.[1] ?? 0);
+    if (htDang >= rule.minHalfTimeDangerousAttacks) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Опасных атак к перерыву ${htDang} < ${rule.minHalfTimeDangerousAttacks}`);
+    }
+  }
+  if (rule.minHalfTimeShotsOnTarget !== undefined) {
+    totalCriteria++;
+    const htSot = (match.halfTimeStats?.shotsOnTarget?.[0] ?? match.stats?.shotsOnTarget?.[0] ?? 0) +
+                  (match.halfTimeStats?.shotsOnTarget?.[1] ?? match.stats?.shotsOnTarget?.[1] ?? 0);
+    if (htSot >= rule.minHalfTimeShotsOnTarget) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Ударов в створ к перерыву ${htSot} < ${rule.minHalfTimeShotsOnTarget}`);
+    }
+  }
+  if (rule.minHalfTimeCorners !== undefined) {
+    totalCriteria++;
+    const htCorners = (match.halfTimeStats?.corners?.[0] ?? match.stats?.corners?.[0] ?? 0) +
+                      (match.halfTimeStats?.corners?.[1] ?? match.stats?.corners?.[1] ?? 0);
+    if (htCorners >= rule.minHalfTimeCorners) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Угловых к перерыву ${htCorners} < ${rule.minHalfTimeCorners}`);
+    }
+  }
+  if (rule.maxMinute46OddsOver05 !== undefined) {
+    totalCriteria++;
+    const min46Odds = (match.odds as any)?.minute46OddsOver05 ?? (match.odds as any)?.over05Minute46 ?? 1.12;
+    if (min46Odds <= rule.maxMinute46OddsOver05) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Кэф на ТБ 0.5 на 46' (${min46Odds.toFixed(2)}) > ${rule.maxMinute46OddsOver05}`);
+    }
+  }
+  if (rule.minLiveOddsOver05 !== undefined) {
+    totalCriteria++;
+    const liveOver05 = (match.odds as any)?.liveOver05 ?? (match.odds as any)?.over05Live ?? (match.odds as any)?.liveOddsOver05 ?? (match.odds?.over25 ? Math.max(1.10, match.odds.over25 * 0.72) : 1.30);
+    if (liveOver05 >= rule.minLiveOddsOver05) {
+      passedCount++;
+    } else {
+      unmetCriteria.push(`Лайв кэф на ТБ 0.5 (${liveOver05.toFixed(2)}) < ${rule.minLiveOddsOver05}`);
     }
   }
 
@@ -2650,6 +2722,7 @@ export function getStrategyTargetCluster(
     rule.id === 'strat-2' ||
     rule.id === 'strat-8' ||
     rule.id === 'strat-photo-ht-goal-92' ||
+    rule.id === 'strat-photo-kef-1h-value' ||
     market.includes('1 тайм') ||
     market.includes('1-м тайм') ||
     market.includes('1-й тайм') ||
@@ -2669,10 +2742,12 @@ export function getStrategyTargetCluster(
     };
   }
 
-  // 5. Goal in 2nd Half (ТБ 0.5 2Т / Решето во 2Т)
+  // 5. Goal in 2nd Half (ТБ 0.5 2Т / Решето во 2Т / Поздний гол)
   if (
     rule.id === 'strat-12' ||
     rule.id === 'strat-second-half-sieve' ||
+    rule.id === 'strat-photo-all-in-one-68-75' ||
+    rule.id === 'strat-photo-kef2-ht-over05' ||
     market.includes('2 тайм') ||
     market.includes('2-м тайм') ||
     market.includes('2-й тайм') ||
@@ -2683,11 +2758,12 @@ export function getStrategyTargetCluster(
     name.includes('2-й тайм') ||
     name.includes('2т') ||
     name.includes('во втором') ||
-    name.includes('решето')
+    name.includes('решето') ||
+    name.includes('все обо всем')
   ) {
     return {
       cluster: 'GOAL_2H',
-      clusterNameRu: 'Гол во 2-м тайме (ТБ 0.5 2Т)',
+      clusterNameRu: 'Гол во 2-м тайме / концовке (ТБ 0.5 2Т)',
       badgeLabel: '⚽ СИНЕРГИЯ НА ГОЛ ВО 2-М ТАЙМЕ',
     };
   }
@@ -3988,7 +4064,10 @@ export function evaluateSignalOutcome(
     signal.ruleId === 'strat-photo-match-goal-multi' ||
     signal.ruleId === 'strat-photo-goal-95-h2h' ||
     signal.ruleId === 'strat-photo-goal-98-combo' ||
-    (signal.ruleId && PRESET_STRATEGY_NUMBER_BY_ID[signal.ruleId] >= 63 && PRESET_STRATEGY_NUMBER_BY_ID[signal.ruleId] <= 67);
+    signal.ruleId === 'strat-photo-all-in-one-68-75' ||
+    signal.ruleId === 'strat-photo-kef2-ht-over05' ||
+    signal.ruleId === 'strat-photo-kef-1h-value' ||
+    (signal.ruleId && PRESET_STRATEGY_NUMBER_BY_ID[signal.ruleId] >= 63 && PRESET_STRATEGY_NUMBER_BY_ID[signal.ruleId] <= 72);
 
   if (isPhotoScannerGoal) {
     if (signal.ruleId === 'strat-photo-home-goal-17-20' && curHome > initHome) {
@@ -4005,12 +4084,12 @@ export function evaluateSignalOutcome(
         shouldResolve: true,
       };
     }
-    if (signal.ruleId === 'strat-photo-ht-goal-92' && isHalfTimeEnded) {
+    if ((signal.ruleId === 'strat-photo-ht-goal-92' || signal.ruleId === 'strat-photo-kef-1h-value') && isHalfTimeEnded) {
       return {
         outcome: goalsSinceSignal > 0 ? 'WIN' : 'LOSS',
         note: goalsSinceSignal > 0
-          ? `Гол в 1-м тайме зашёл! Перерыв при ${curHome}:${curAway}`
-          : `1-й тайм завершился 0:0 (${curHome}:${curAway})`,
+          ? `Гол в 1-м тайме зашёл! Счёт к перерыву ${curHome}:${curAway}`
+          : `1-й тайм завершился без голов после сигнала (${curHome}:${curAway})`,
         shouldResolve: true,
       };
     }

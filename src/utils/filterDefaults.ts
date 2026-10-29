@@ -283,6 +283,9 @@ export const PRESET_STRATEGY_NUMBER_BY_ID: Record<string, number> = {
   'strat-photo-goal-98-combo': 67,
   'strat-pdf-three-matches-theory': 68,
   'strat-pdf-15-param-value-drop': 69,
+  'strat-photo-all-in-one-68-75': 70,
+  'strat-photo-kef2-ht-over05': 71,
+  'strat-photo-kef-1h-value': 72,
 };
 
 /**

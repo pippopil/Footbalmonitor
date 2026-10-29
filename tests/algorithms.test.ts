@@ -1581,6 +1581,130 @@ assert(sameEventComboHtml.includes('ЕДИНЫЙ ЦЕЛЕВОЙ ИСХОД'), 'S
 assert(sameEventComboHtml.includes('ГОЛ В 1-М ТАЙМЕ'), 'Super-Combo alert names the specific 1H goal target');
 
 // ----------------------------------------------------
+// TEST GROUP 19: Strategies 70, 71, 72 from Scanner Images
+// ----------------------------------------------------
+console.log('\n--- Test Group 19: Strategies 70, 71, 72 (All-In-One 68-75, Kef2 92% Strike, Kef 1H Value) ---');
+
+// 1. Strategy 70 («Все обо всем тест»)
+const strat70 = EXPANDED_DEFAULT_FILTERS.find((f) => f.id === 'strat-photo-all-in-one-68-75')!;
+assert(strat70 !== undefined, 'Strategy 70 (strat-photo-all-in-one-68-75) exists in default filters');
+assert(strat70.minShotsOffTargetTotal === 6, 'Strategy 70 requires minShotsOffTargetTotal >= 6');
+assert(strat70.maxTotalGoals === 3, 'Strategy 70 requires maxTotalGoals <= 3');
+
+const match70Pass: Match = {
+  ...minimalMatch,
+  id: 'm-photo-70',
+  minute: 71,
+  status: 'LIVE',
+  score: [1, 1], // 2 total goals <= 3
+  stats: {
+    ...minimalMatch.stats,
+    shotsOnTarget: [4, 3], // 7 total >= 7
+    shotsOffTarget: [3, 3], // 6 total >= 6
+    corners: [3, 2], // 5 total >= 5
+  },
+};
+const eval70 = evaluateFilterRule(match70Pass, strat70);
+assert(eval70.matches === true, 'Strategy 70 triggers at minute 71 with 7 SOT, 6 off-target, 5 corners, total goals 2');
+
+const match70OffTargetFail: Match = {
+  ...match70Pass,
+  stats: {
+    ...match70Pass.stats,
+    shotsOffTarget: [3, 2], // 5 total < 6
+  },
+};
+const eval70Fail = evaluateFilterRule(match70OffTargetFail, strat70);
+assert(eval70Fail.matches === false, 'Strategy 70 rejects match when shots off-target < 6');
+
+const cluster70 = getStrategyTargetCluster(strat70, match70Pass);
+assert(cluster70.cluster === 'GOAL_2H', 'Strategy 70 maps to GOAL_2H target cluster');
+
+// 2. Strategy 71 («Кеф 2 (Strike 92%)» Over 0.5 Since Picked)
+const strat71 = EXPANDED_DEFAULT_FILTERS.find((f) => f.id === 'strat-photo-kef2-ht-over05')!;
+assert(strat71 !== undefined, 'Strategy 71 (strat-photo-kef2-ht-over05) exists in default filters');
+assert(strat71.minHalfTimeDangerousAttacks === 45, 'Strategy 71 requires minHalfTimeDangerousAttacks >= 45');
+assert(strat71.minLiveOddsOver05 === 1.25, 'Strategy 71 requires minLiveOddsOver05 >= 1.25');
+
+const match71Pass: Match = {
+  ...minimalMatch,
+  id: 'm-photo-71',
+  minute: 54,
+  status: 'LIVE',
+  score: [0, 0],
+  odds: {
+    ...minimalMatch.odds,
+    over05Minute46: 1.12, // <= 1.15
+    over05Live: 1.28,      // >= 1.25
+  },
+  halfTimeStats: {
+    dangerousAttacks: [26, 22], // 48 >= 45
+    shotsOnTarget: [2, 2],      // 4 >= 3
+    corners: [2, 2],            // 4 >= 3
+  },
+};
+const eval71 = evaluateFilterRule(match71Pass, strat71);
+assert(eval71.matches === true, 'Strategy 71 triggers in 2H when HT pressure high and live Over 0.5 odds reach value 1.28');
+
+const match71LowOddsFail: Match = {
+  ...match71Pass,
+  odds: {
+    ...match71Pass.odds,
+    over05Live: 1.18, // < 1.25
+  },
+};
+const eval71Fail = evaluateFilterRule(match71LowOddsFail, strat71);
+assert(eval71Fail.matches === false, 'Strategy 71 rejects match when live Over 0.5 odds < 1.25');
+
+const cluster71 = getStrategyTargetCluster(strat71, match71Pass);
+assert(cluster71.cluster === 'GOAL_2H', 'Strategy 71 maps to GOAL_2H target cluster');
+assert(cluster70.cluster === cluster71.cluster, 'Strategy 70 and Strategy 71 share GOAL_2H cluster for Super-Combo');
+
+// 3. Strategy 72 («Кеф Value 1Т» Over 0.5 1H)
+const strat72 = EXPANDED_DEFAULT_FILTERS.find((f) => f.id === 'strat-photo-kef-1h-value')!;
+assert(strat72 !== undefined, 'Strategy 72 (strat-photo-kef-1h-value) exists in default filters');
+assert(strat72.scoreCondition === '0-0', 'Strategy 72 strictly operates at 0-0 in 1st half');
+
+const match72Pass: Match = {
+  ...minimalMatch,
+  id: 'm-photo-72',
+  minute: 24,
+  status: 'LIVE',
+  score: [0, 0],
+  stats: {
+    ...minimalMatch.stats,
+    dangerousAttacks: [14, 10], // 24 >= 20
+    shotsOnTarget: [2, 1],      // 3 SOT
+    shotsOffTarget: [1, 1],     // Total shots = 5 >= 3
+  },
+};
+const eval72 = evaluateFilterRule(match72Pass, strat72);
+assert(eval72.matches === true, 'Strategy 72 triggers at min 24 with 0:0, 24 dangerous attacks, 5 total shots');
+
+const match72ScoreFail: Match = {
+  ...match72Pass,
+  score: [1, 0], // Not 0-0
+};
+const eval72Fail = evaluateFilterRule(match72ScoreFail, strat72);
+assert(eval72Fail.matches === false, 'Strategy 72 rejects match when score is not 0:0');
+
+const cluster72 = getStrategyTargetCluster(strat72, match72Pass);
+assert(cluster72.cluster === 'GOAL_1H', 'Strategy 72 maps to GOAL_1H target cluster');
+
+// Resolution of Strategy 72 on 1H goal
+const sig72: SignalAlert = {
+  ...cornerSignal,
+  id: 'sig-72-test',
+  minute: 24,
+  score: '0:0',
+  ruleId: 'strat-photo-kef-1h-value',
+  ruleName: strat72.name,
+  marketSuggestion: strat72.targetMarket,
+};
+const res72Win = evaluateSignalOutcome(sig72, [1, 0], false, undefined, undefined, { minute: 36, matchStatus: 'LIVE' });
+assert(res72Win.outcome === 'WIN', 'Strategy 72 resolves as WIN when goal is scored in 1st half (min 36, 1:0)');
+
+// ----------------------------------------------------
 // SUMMARY
 // ----------------------------------------------------
 console.log('\n========================================');

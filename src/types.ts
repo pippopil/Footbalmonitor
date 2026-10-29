@@ -46,6 +46,7 @@ export interface Match {
   team1RecentMatches?: RecentMatchRecord[];
   team2RecentMatches?: RecentMatchRecord[];
   stats: MatchStats;
+  halfTimeStats?: Partial<MatchStats>;
   momentum: number[];
   lastEvent: string;
   odds: {
@@ -237,10 +238,17 @@ export interface FilterRule {
   minTotalShots?: number;
   minShotsDiff?: number;
   minShotsOnTargetTotal?: number;
+  minShotsOffTargetTotal?: number; // Удары мимо ворот суммарно >= X (например >= 6)
   minShotsOnTargetDiff?: number;
   minTotalCorners?: number;
   minCornersDiff?: number;
   minPossessionDiff?: number;
+  // По показателям 1-го тайма (InPlayGuru)
+  minHalfTimeDangerousAttacks?: number; // Опасные атаки к перерыву >= X (например >= 45)
+  minHalfTimeShotsOnTarget?: number;    // Удары в створ к перерыву >= X (например >= 3)
+  minHalfTimeCorners?: number;          // Угловые к перерыву >= X (например >= 3)
+  maxMinute46OddsOver05?: number;       // Кэф на ТБ 0.5 на 46' <= X (например <= 1.15)
+  minLiveOddsOver05?: number;           // Текущий кэф лайв на ТБ 0.5 >= X (например >= 1.25)
   minXgTotal?: number;
   minXgDiff?: number;
   minXgOverScoreDiff?: number; // Дефицит xG над счётом: (xG[0] + xG[1]) - (score[0] + score[1]) >= X (например 1.60)
