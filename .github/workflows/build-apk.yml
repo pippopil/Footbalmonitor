@@ -1,0 +1,408 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Package Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install App Dependencies
+        run: npm install
+
+      - name: Build Web Application Bundle (Vite)
+        run: npm run build
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
+        continue-on-error: true
+        with:
+          gradle-version: '8.5'
+          cache-disabled: true
+
+      - name: Ensure Gradle 8.5 is Available (Direct Fallback)
+        run: |
+          if ! command -v gradle &> /dev/null; then
+            echo "Installing Gradle 8.5 directly from services.gradle.org..."
+            curl -sSL -o /tmp/gradle-8.5-bin.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip
+            sudo unzip -q -o /tmp/gradle-8.5-bin.zip -d /opt/
+            sudo ln -sf /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
+          fi
+          gradle --version
+
+      - name: Accept Android SDK Licenses & Configure Environment
+        run: |
+          ANDROID_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$ANDROID_ROOT" >> $GITHUB_ENV
+          echo "$ANDROID_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_ROOT/tools/bin" >> $GITHUB_PATH
+          echo "$ANDROID_ROOT/platform-tools" >> $GITHUB_PATH
+
+          mkdir -p "$ANDROID_ROOT/licenses" || true
+          printf "24333f8a6371fba30ea89280169994b9ca6e4862\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\ne6b7c2ab7dee62e2d4f114b870123d90741ab2d6\n" > "$ANDROID_ROOT/licenses/android-sdk-license"
+          printf "84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_ROOT/licenses/android-sdk-preview-license"
+
+          if [ -x "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          fi
+
+      - name: Initialize Android Wrapper Project with Dynamic Build Number
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r dist/* android/app/src/main/assets/www/ || true
+          cp -r dist/* android/app/src/main/assets/ || true
+          mkdir -p android/app/src/main/res/values
+          mkdir -p android/app/src/main/java/com/sportsignal/app
+
+          BUILD_NUM="${{ github.run_number }}"
+          VERSION_NAME="1.0.${BUILD_NUM}"
+          echo "Setting version: ${VERSION_NAME} (code: ${BUILD_NUM})"
+
+          # Detect Android SDK directory dynamically from runner environment
+          ANDROID_SDK_PATH="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -d "$ANDROID_SDK_PATH" ]; then
+            echo "sdk.dir=$ANDROID_SDK_PATH" > android/local.properties
+          fi
+
+          cat << 'EOF' > android/gradle.properties
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          org.gradle.daemon=false
+          EOF
+
+          cat << 'EOF' > android/settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "SportSignal"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > android/build.gradle
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+
+          cat << EOF > android/app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.sportsignal.app'
+              compileSdk 34
+              buildToolsVersion "34.0.0"
+
+              defaultConfig {
+                  applicationId "com.sportsignal.app"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode ${BUILD_NUM}
+                  versionName "${VERSION_NAME}"
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              buildTypes {
+                  debug {
+                      minifyEnabled false
+                      debuggable true
+                  }
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              lint {
+                  abortOnError false
+                  checkReleaseBuilds false
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.webkit:webkit:1.10.0'
+          }
+          EOF
+
+          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.VIBRATE" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+              <application
+                  android:allowBackup="true"
+                  android:label="@string/app_name"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:supportsRtl="true"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # Populate Android Launcher Icons across all densities
+          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp public/assets/icon-192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          cp public/assets/icon-512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp public/assets/icon-512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          cp public/assets/icon-512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cp public/assets/icon-512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
+          cat << 'EOF' > android/app/src/main/res/values/strings.xml
+          <resources>
+              <string name="app_name">SportSignal AI</string>
+          </resources>
+          EOF
+
+          cat << 'EOF' > android/app/src/main/java/com/sportsignal/app/MainActivity.java
+          package com.sportsignal.app;
+
+          import android.app.Activity;
+          import android.app.DownloadManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.webkit.DownloadListener;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+          import androidx.webkit.WebViewAssetLoader;
+
+          public class MainActivity extends Activity {
+              private WebView webView;
+              private static final String LOCAL_APP_URL = "https://appassets.androidplatform.net/assets/www/index.html";
+              private static final String FILE_FALLBACK_URL = "file:///android_asset/www/index.html";
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  webView = new WebView(this);
+                  webView.setBackgroundColor(0xFF020617);
+                  setContentView(webView);
+
+                  final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
+                      .setDomain("appassets.androidplatform.net")
+                      .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                      .addPathHandler("/www/", new WebViewAssetLoader.AssetsPathHandler(this))
+                      .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
+                      .build();
+
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+                  settings.setAllowFileAccessFromFileURLs(true);
+                  settings.setAllowUniversalAccessFromFileURLs(true);
+                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  settings.setMediaPlaybackRequiresUserGesture(false);
+                  settings.setUserAgentString(settings.getUserAgentString() + " SportSignalAndroid/1.0");
+
+                  // Native in-app APK download listener for 1-click self-updating
+                  webView.setDownloadListener(new DownloadListener() {
+                      @Override
+                      public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                          if (url != null && (url.endsWith(".apk") || (mimeType != null && mimeType.contains("vnd.android.package-archive")))) {
+                              try {
+                                  DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                                  request.setMimeType("application/vnd.android.package-archive");
+                                  request.setTitle("SportSignal AI Update");
+                                  request.setDescription("Загрузка обновления SportSignal...");
+                                  request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                                  request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "SportSignal-update.apk");
+
+                                  DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                                  if (dm != null) {
+                                      dm.enqueue(request);
+                                      Toast.makeText(MainActivity.this, "Загрузка обновления началась. Нажмите на уведомление для установки.", Toast.LENGTH_LONG).show();
+                                      return;
+                                  }
+                              } catch (Exception e) {
+                                  android.util.Log.e("SportSignalApp", "DownloadManager failed", e);
+                              }
+                          }
+                          try {
+                              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                              startActivity(intent);
+                          } catch (Exception ex) {
+                              android.util.Log.e("SportSignalApp", "Open download url failed", ex);
+                          }
+                      }
+                  });
+
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onConsoleMessage(android.webkit.ConsoleMessage cm) {
+                          android.util.Log.d("SportSignalApp", cm.message() + " -- Line " + cm.lineNumber() + " of " + cm.sourceId());
+                          return true;
+                      }
+                  });
+
+                  webView.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                          if (request.getUrl() != null && "appassets.androidplatform.net".equals(request.getUrl().getHost())) {
+                              WebResourceResponse response = assetLoader.shouldInterceptRequest(request.getUrl());
+                              if (response != null) {
+                                  java.util.Map<String, String> headers = response.getResponseHeaders();
+                                  if (headers == null) {
+                                      headers = new java.util.HashMap<>();
+                                  }
+                                  headers.put("Access-Control-Allow-Origin", "*");
+                                  headers.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                                  headers.put("Access-Control-Allow-Headers", "*");
+                                  response.setResponseHeaders(headers);
+                              }
+                              return response;
+                          }
+                          return super.shouldInterceptRequest(view, request);
+                      }
+
+                      @Override
+                      public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                          android.util.Log.e("SportSignalApp", "Load Error: " + description + " at " + failingUrl);
+                          if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
+                              view.loadUrl(FILE_FALLBACK_URL);
+                          }
+                      }
+
+                      @Override
+                      public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                          if (request != null && request.isForMainFrame()) {
+                              android.util.Log.e("SportSignalApp", "Main frame HTTP Error: " + errorResponse.getStatusCode());
+                              view.loadUrl(FILE_FALLBACK_URL);
+                          }
+                      }
+                  });
+
+                  // Load bundled local application instantly with zero reliance on external preview servers
+                  webView.loadUrl(LOCAL_APP_URL);
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build Android APK (Debug)
+        working-directory: android
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare Versioned APK Files
+        run: |
+          BUILD_NUM="${{ github.run_number }}"
+          VERSION_NAME="1.0.${BUILD_NUM}"
+          mkdir -p release-apk
+          # Copy with versioned name so every release keeps its distinct file
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release-apk/SportSignal-v${VERSION_NAME}-b${BUILD_NUM}.apk"
+          # Also copy standard name for convenient one-click download
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/SportSignal-latest.apk
+          echo "RELEASE_TAG=v1.0.${BUILD_NUM}" >> $GITHUB_ENV
+          echo "RELEASE_NAME=SportSignal AI v1.0.${BUILD_NUM} (Build #${BUILD_NUM})" >> $GITHUB_ENV
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SportSignal-Android-APK
+          path: release-apk/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release with APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ### 📱 SportSignal AI — Мобильное приложение для Android
+            
+            - **Версия:** `1.0.${{ github.run_number }}`
+            - **Номер сборки (Build Code):** `${{ github.run_number }}`
+            - **Ветка:** `${{ github.ref_name }}`
+            - **Коммит:** `${{ github.sha }}`
+            
+            #### 📥 Файлы для установки:
+            - **[Скачать SportSignal-v1.0.${{ github.run_number }}-b${{ github.run_number }}.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.${{ github.run_number }}/SportSignal-v1.0.${{ github.run_number }}-b${{ github.run_number }}.apk)** — архивная версия сборки
+            - **[Скачать SportSignal-latest.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.${{ github.run_number }}/SportSignal-latest.apk)** — актуальная версия
+            
+            *Установка: разрешите установку из неизвестных источников в настройках Android и откройте скачанный `.apk` файл.*
+          files: |
+            release-apk/SportSignal-v1.0.${{ github.run_number }}-b${{ github.run_number }}.apk
+            release-apk/SportSignal-latest.apk

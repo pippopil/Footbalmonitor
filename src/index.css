@@ -1,0 +1,402 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply antialiased bg-slate-950 text-slate-100;
+  }
+}
+
+/* Hide scrollbar utility for smooth mobile horizontal carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* iOS Safe area utility */
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
+}
+
+/* Light Theme Variables & Palette Mapping */
+html.light,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Slate scale remapping for clean, accessible light mode */
+  --color-slate-950: #f8fafc; /* canvas background: crisp slate-50 */
+  --color-slate-900: #ffffff; /* cards / panel backgrounds: pure white */
+  --color-slate-850: #f1f5f9;
+  --color-slate-800: #e2e8f0; /* borders & subtle dividers: slate-200 */
+  --color-slate-750: #cbd5e1;
+  --color-slate-700: #cbd5e1; /* secondary borders: slate-300 */
+  --color-slate-600: #94a3b8; /* slate-400 */
+  --color-slate-500: #64748b; /* muted labels: slate-500 */
+  --color-slate-400: #475569; /* secondary text: slate-600 */
+  --color-slate-300: #334155; /* primary subtitles: slate-700 */
+  --color-slate-200: #1e293b; /* headings: slate-800 */
+  --color-slate-100: #0f172a; /* high-contrast dark text: slate-900 */
+  --color-slate-50: #020617;
+}
+
+/* Light theme root body */
+.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Ensure deep contrast text when classes specify dark slate text */
+.light .text-slate-950,
+.light [class*="text-slate-950"] {
+  color: #020617 !important;
+}
+
+.light .text-slate-900,
+.light [class*="text-slate-900"] {
+  color: #0f172a !important;
+}
+
+/* In light mode, general .text-white text turns deep dark (#0f172a) for readability UNLESS inside solid buttons */
+.light .text-white:not(button *):not([class*="bg-emerald-600"] *):not([class*="bg-blue-600"] *):not([class*="bg-indigo-600"] *):not([class*="bg-rose-600"] *):not([class*="from-"] *):not([class*="bg-slate-800"] *) {
+  color: #0f172a;
+}
+
+/* ========================================================
+   LIGHT THEME BUTTONS & CONTROLS: CRYSTAL CLEAR CONTRAST
+   ======================================================== */
+
+/* Solid colored primary buttons: guarantee crisp white text in light mode */
+.light button[class*="bg-emerald-600"],
+.light button[class*="bg-blue-600"],
+.light button[class*="bg-indigo-600"],
+.light button[class*="bg-rose-600"],
+.light button[class*="bg-teal-600"],
+.light button[class*="bg-purple-600"],
+.light button[class*="from-"],
+.light [class*="bg-emerald-600"],
+.light [class*="bg-blue-600"],
+.light [class*="bg-indigo-600"],
+.light [class*="bg-rose-600"],
+.light [class*="bg-teal-600"],
+.light [class*="from-indigo-600"],
+.light [class*="from-emerald-600"],
+.light [class*="from-blue-600"],
+.light .preserve-white,
+.light [data-theme-preserve="white"] {
+  color: #ffffff !important;
+}
+
+.light button[class*="bg-emerald-600"] *,
+.light button[class*="bg-blue-600"] *,
+.light button[class*="bg-indigo-600"] *,
+.light button[class*="bg-rose-600"] *,
+.light button[class*="from-"] *,
+.light [class*="bg-emerald-600"] *,
+.light [class*="bg-blue-600"] *,
+.light [class*="from-indigo-600"] * {
+  color: #ffffff !important;
+}
+
+/* Active navigation & segmented buttons in light mode: deep slate with white text */
+.light header button[class*="bg-slate-800"],
+.light nav button[class*="bg-slate-800"],
+.light .flex.bg-slate-900 button[class*="bg-slate-800"],
+.light [role="tab"][aria-selected="true"] {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.light header button[class*="bg-slate-800"] *,
+.light nav button[class*="bg-slate-800"] *,
+.light .flex.bg-slate-900 button[class*="bg-slate-800"] * {
+  color: #ffffff !important;
+}
+
+/* Inactive navigation tab buttons in light mode */
+.light header button.text-slate-400,
+.light nav button.text-slate-400,
+.light .flex.bg-slate-900 button.text-slate-400 {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+/* Quick Theme Toggle Button in Header: Ultra High Contrast & Visibility */
+.light #theme-quick-toggle-btn {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light #theme-quick-toggle-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #020617 !important;
+}
+
+.light #theme-quick-toggle-btn svg {
+  color: #4f46e5 !important;
+}
+
+.light #theme-quick-toggle-btn span {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+#theme-quick-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease-in-out;
+}
+
+.light header button.text-slate-400:hover,
+.light nav button.text-slate-400:hover,
+.light .flex.bg-slate-900 button.text-slate-400:hover {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Bright buttons (amber, yellow, lime, emerald-500): ensure dark black text */
+.light button[class*="bg-amber-400"],
+.light button[class*="bg-amber-500"],
+.light button[class*="bg-emerald-400"],
+.light button[class*="bg-emerald-500"],
+.light button[class*="bg-yellow-"] {
+  color: #020617 !important;
+  font-weight: 700 !important;
+}
+
+.light button[class*="bg-amber-400"] *,
+.light button[class*="bg-amber-500"] *,
+.light button[class*="bg-emerald-400"] *,
+.light button[class*="bg-emerald-500"] * {
+  color: #020617 !important;
+}
+
+/* Secondary & neutral buttons across all views in light mode: clear elevated shape, visible border, dark text */
+.light button.bg-slate-800,
+.light button.bg-slate-700,
+.light button.bg-slate-900,
+.light button.bg-slate-950,
+.light button[class*="bg-slate-800"],
+.light button[class*="bg-slate-900"],
+.light button[class*="bg-slate-950"],
+.light button[class*="border-slate-800"],
+.light button[class*="border-slate-700"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02) !important;
+}
+
+.light button.bg-slate-800:hover,
+.light button.bg-slate-700:hover,
+.light button.bg-slate-900:hover,
+.light button.bg-slate-950:hover,
+.light button[class*="bg-slate-800"]:hover,
+.light button[class*="bg-slate-900"]:hover,
+.light button[class*="bg-slate-950"]:hover,
+.light button[class*="border-slate-800"]:hover,
+.light button[class*="border-slate-700"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #020617 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.09) !important;
+}
+
+/* Sub-navigation tabs in Personal Cabinet & modals */
+.light .flex button[class*="bg-slate-900/60"],
+.light div button[class*="bg-slate-900/60"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .flex button[class*="bg-slate-900/60"]:hover,
+.light div button[class*="bg-slate-900/60"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* Quick strategy presets bar in FilterBuilderModal */
+.light .flex button[class*="bg-slate-900"][class*="hover:bg-slate-800"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light .flex button[class*="bg-slate-900"][class*="hover:bg-slate-800"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #020617 !important;
+}
+
+/* Table action buttons (Зашел / Минус / Действия) in light mode */
+.light td button[class*="bg-slate-800"] {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+.light td button[class*="bg-slate-800"]:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* Danger, Delete & Logout buttons in light mode */
+.light button[class*="bg-red-950/40"],
+.light button[class*="bg-rose-500/10"],
+.light button[class*="hover:bg-rose-950"],
+.light button[class*="hover:bg-rose-900"],
+.light button[class*="hover:bg-red-900"] {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fca5a5 !important;
+  color: #b91c1c !important;
+}
+
+.light button[class*="bg-red-950/40"]:hover,
+.light button[class*="bg-rose-500/10"]:hover,
+.light button[class*="hover:bg-rose-950"]:hover,
+.light button[class*="hover:bg-rose-900"]:hover,
+.light button[class*="hover:bg-red-900"]:hover {
+  background-color: #fee2e2 !important;
+  border-color: #f87171 !important;
+  color: #991b1b !important;
+}
+
+/* Tinted colored pill buttons in light mode: deep readable text with matching soft background and border */
+.light button[class*="bg-amber-500/10"],
+.light button[class*="bg-amber-500/15"],
+.light button[class*="bg-amber-500/20"],
+.light [class*="bg-amber-500/10"]:not(button *),
+.light [class*="bg-amber-500/15"]:not(button *),
+.light [class*="bg-amber-500/20"]:not(button *) {
+  background-color: #fffbeb !important;
+  border: 1px solid #fcd34d !important;
+  color: #92400e !important;
+}
+
+.light button[class*="bg-emerald-500/10"],
+.light button[class*="bg-emerald-500/15"],
+.light button[class*="bg-emerald-500/20"],
+.light button[class*="bg-emerald-600/20"],
+.light [class*="bg-emerald-500/10"]:not(button *),
+.light [class*="bg-emerald-500/15"]:not(button *),
+.light [class*="bg-emerald-500/20"]:not(button *) {
+  background-color: #ecfdf5 !important;
+  border: 1px solid #6ee7b7 !important;
+  color: #065f46 !important;
+}
+
+.light button[class*="bg-blue-600/10"],
+.light button[class*="bg-blue-600/20"],
+.light [class*="bg-blue-600/10"]:not(button *),
+.light [class*="bg-blue-600/20"]:not(button *) {
+  background-color: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
+  color: #1e40af !important;
+}
+
+.light button[class*="bg-indigo-500/10"],
+.light button[class*="bg-indigo-500/20"],
+.light [class*="bg-indigo-500/10"]:not(button *),
+.light [class*="bg-indigo-500/20"]:not(button *) {
+  background-color: #eef2ff !important;
+  border: 1px solid #a5b4fc !important;
+  color: #3730a3 !important;
+}
+
+/* Light mode text contrast enhancements for badges and metrics (WCAG AA) */
+.light .text-emerald-300,
+.light .text-emerald-400 {
+  color: #047857 !important;
+}
+.light .text-amber-300,
+.light .text-amber-400 {
+  color: #b45309 !important;
+}
+.light .text-indigo-300,
+.light .text-indigo-400 {
+  color: #4338ca !important;
+}
+.light .text-blue-300,
+.light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+.light .text-rose-300,
+.light .text-rose-400 {
+  color: #be123c !important;
+}
+.light .text-cyan-300,
+.light .text-cyan-400 {
+  color: #0e7490 !important;
+}
+.light .text-purple-300,
+.light .text-purple-400 {
+  color: #7e22ce !important;
+}
+.light .text-sky-300,
+.light .text-sky-400 {
+  color: #0369a1 !important;
+}
+
+/* Prevent hover:text-white from turning text invisible on light buttons */
+.light button:not([class*="bg-emerald-600"]):not([class*="bg-blue-600"]):not([class*="bg-indigo-600"]):not([class*="bg-rose-600"]):not([class*="from-"]):not([class*="bg-gradient"]):hover,
+.light button:not([class*="bg-emerald-600"]):not([class*="bg-blue-600"]):not([class*="bg-indigo-600"]):not([class*="bg-rose-600"]):not([class*="from-"]):not([class*="bg-gradient"]):hover span:not([class*="text-"]):not([class*="bg-"]),
+.light button:not([class*="bg-emerald-600"]):not([class*="bg-blue-600"]):not([class*="bg-indigo-600"]):not([class*="bg-rose-600"]):not([class*="from-"]):not([class*="bg-gradient"]):hover p {
+  color: #0f172a !important;
+}
+
+/* Accessible focus ring for buttons in light mode */
+.light button:focus-visible {
+  outline: 2px solid #059669 !important;
+  outline-offset: 1px !important;
+}
+
+/* Light mode card elevation & shadows */
+.light .bg-slate-900 {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+/* Light mode inputs & selects */
+.light input,
+.light select,
+.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Table rows hover in light mode */
+.light tr:hover {
+  background-color: #f8fafc !important;
+}
+

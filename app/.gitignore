@@ -1,0 +1,26 @@
+# Секреты и окружение
+.env
+*.env
+!.env.example
+
+# База данных
+data/
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Excel и временные файлы
+*.xlsx
+*.log

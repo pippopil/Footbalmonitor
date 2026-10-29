@@ -1,0 +1,32 @@
+name: CI / Code Quality & Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type checking & Linting
+        run: npm run lint
+
+      - name: Run automated test suite
+        run: npm test
+
+      - name: Verify build bundle
+        run: npm run build
