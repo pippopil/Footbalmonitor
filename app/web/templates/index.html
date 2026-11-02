@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои фильтры</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>Мои фильтры</h2>
+    <div class="mb-3">
+        <a href="/filter/new?chat_id={{ chat_id }}" class="btn btn-success">Создать новый фильтр</a>
+        <a href="/leagues?chat_id={{ chat_id }}" class="btn btn-secondary">Управление чёрным списком лиг</a>
+        <a href="/archive?chat_id={{ chat_id }}" class="btn btn-info">Архив (полная версия)</a>
+    </div>
+
+    <!-- Вкладки: Фильтры и Сигналы -->
+    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="filters-tab" data-bs-toggle="tab" href="#filters" role="tab">Фильтры</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="signals-tab" data-bs-toggle="tab" href="#signals" role="tab">Сигналы</a>
+        </li>
+    </ul>
+    <div class="tab-content mt-3">
+        <!-- Вкладка Фильтры -->
+        <div class="tab-pane fade show active" id="filters" role="tabpanel">
+            <ul class="nav nav-tabs" id="filterTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="all-tab" data-bs-toggle="tab" href="#all" role="tab">Все</a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="active-tab" data-bs-toggle="tab" href="#active" role="tab">Активные</a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="inactive-tab" data-bs-toggle="tab" href="#inactive" role="tab">Неактивные</a>
+                </li>
+            </ul>
+            <div class="tab-content mt-3">
+                <div class="tab-pane fade show active" id="all" role="tabpanel">
+                    {% include "_filter_table.html" %}
+                </div>
+                <div class="tab-pane fade" id="active" role="tabpanel">
+                    {% set active_filters = filters | selectattr('is_active', 'equalto', 1) | list %}
+                    {% with filters = active_filters %}
+                        {% include "_filter_table.html" %}
+                    {% endwith %}
+                </div>
+                <div class="tab-pane fade" id="inactive" role="tabpanel">
+                    {% set inactive_filters = filters | selectattr('is_active', 'equalto', 0) | list %}
+                    {% with filters = inactive_filters %}
+                        {% include "_filter_table.html" %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка Сигналы (загружается через AJAX) -->
+        <div class="tab-pane fade" id="signals" role="tabpanel">
+            <div id="signals-container">
+                <p class="text-muted">Загрузка сигналов...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const signalsTab = document.getElementById('signals-tab');
+    const container = document.getElementById('signals-container');
+    let loaded = false;
+
+    signalsTab.addEventListener('shown.bs.tab', function(event) {
+        if (!loaded) {
+            const chat_id = new URLSearchParams(window.location.search).get('chat_id');
+            fetch('/signals?chat_id=' + chat_id)
+                .then(response => response.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    loaded = true;
+                    // После загрузки привязываем события для фильтров и пагинации (они внутри _signals_table.html)
+                })
+                .catch(err => {
+                    container.innerHTML = '<p class="text-danger">Ошибка загрузки сигналов</p>';
+                    console.error(err);
+                });
+        }
+    });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. Web API & Dashboard Service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./footbalmonitor.db
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # 2. Telegram Bot Isolated Worker Service
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 -m app.run_bot
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./footbalmonitor.db
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # 3. Match Parser & Signal Scheduler Service
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 -m app.run_scheduler
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///./footbalmonitor.db
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # 4. Redis Queue & In-Memory Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:

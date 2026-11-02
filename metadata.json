@@ -1,0 +1,8 @@
+{
+  "name": "Footbalmonitor",
+  "description": "Многопользовательская веб-платформа мониторинга футбольных матчей с личным кабинетом, привязкой Telegram-ботов к фильтрам и рекламными блоками",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

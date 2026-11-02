@@ -1,0 +1,145 @@
+<!-- Форма фильтрации (только для AJAX-вкладки) -->
+<form method="get" action="/signals" class="row g-3 mb-4" id="signals-filter-form">
+    <input type="hidden" name="chat_id" value="{{ chat_id }}">
+    <div class="col-md-3">
+        <label>Фильтр</label>
+        <select name="filter_id" class="form-select" id="signals-filter-filter">
+            <option value="">Все</option>
+            {% for f in filters %}
+            <option value="{{ f.id }}" {% if selected_filter == f.id %}selected{% endif %}>
+                Фильтр #{{ f.id }} ({{ f.match_time_min }}-{{ f.match_time_max }} мин)
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label>Матч (текст)</label>
+        <input type="text" name="match_text" class="form-control" id="signals-filter-text" value="{{ match_text }}" placeholder="Название команды">
+    </div>
+    <div class="col-md-2">
+        <label>С</label>
+        <input type="date" name="from_date" class="form-control" id="signals-filter-from" value="{{ from_date }}">
+    </div>
+    <div class="col-md-2">
+        <label>По</label>
+        <input type="date" name="to_date" class="form-control" id="signals-filter-to" value="{{ to_date }}">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100" id="signals-apply-filter">Применить фильтр</button>
+    </div>
+</form>
+
+<!-- Таблица сигналов -->
+{% if signals %}
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Матч</th>
+            <th>Ожидаемый исход</th>
+            <th>Фактический исход</th>
+            <th>Успех</th>
+            <th>Условия</th>
+            <th>Фильтр</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in signals %}
+        <tr>
+            <td>{{ s.triggered_at }}</td>
+            <td>
+                {% if s.home_name and s.away_name %}
+                    {{ s.home_name }} – {{ s.away_name }}
+                {% else %}
+                    Матч ID {{ s.match_id }}
+                {% endif %}
+            </td>
+            <td>{{ s.expected_outcome or 'не указан' }}</td>
+            <td>{{ s.actual_outcome or 'ожидается' }}</td>
+            <td>{% if s.is_success %}✅{% else %}❌{% endif %}</td>
+            <td>
+                {% if s.conditions %}
+                    {{ s.conditions | truncate(50) }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>#{{ s.filter_id }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Пагинация -->
+<nav>
+    <ul class="pagination justify-content-center" id="signals-pagination">
+        {% if page > 1 %}
+        <li class="page-item"><a class="page-link" href="#" data-page="{{ page-1 }}">←</a></li>
+        {% else %}
+        <li class="page-item disabled"><a class="page-link">←</a></li>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <li class="page-item active"><a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a></li>
+            {% else %}
+            <li class="page-item"><a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <li class="page-item"><a class="page-link" href="#" data-page="{{ page+1 }}">→</a></li>
+        {% else %}
+        <li class="page-item disabled"><a class="page-link">→</a></li>
+        {% endif %}
+    </ul>
+</nav>
+<p>Всего сигналов: {{ total }}</p>
+{% else %}
+<p>Нет сигналов по заданным критериям.</p>
+{% endif %}
+
+<script>
+// AJAX-обновление таблицы сигналов
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('signals-container');
+    if (!container) return;
+
+    function loadSignals(params) {
+        const chat_id = new URLSearchParams(window.location.search).get('chat_id');
+        params.append('chat_id', chat_id);
+        fetch('/signals?' + params.toString())
+            .then(response => response.text())
+            .then(html => {
+                container.innerHTML = html;
+                attachSignalEvents();
+            })
+            .catch(err => console.error('Ошибка загрузки сигналов:', err));
+    }
+
+    function attachSignalEvents() {
+        const form = document.getElementById('signals-filter-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const params = new URLSearchParams(new FormData(form));
+                loadSignals(params);
+            });
+        }
+
+        document.querySelectorAll('#signals-pagination .page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.dataset.page;
+                if (!page) return;
+                const form = document.getElementById('signals-filter-form');
+                const params = new URLSearchParams(new FormData(form));
+                params.set('page', page);
+                loadSignals(params);
+            });
+        });
+    }
+
+    attachSignalEvents();
+});
+</script>

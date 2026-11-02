@@ -1,0 +1,52 @@
+# Clones and temporary folders
+repo/
+temp_repo/
+Footbalmonitor-master/
+
+# Dependencies
+node_modules/
+bun.lock
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Python artifacts
+venv/
+*/venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Database & Runtime Exports
+data/*
+!data/.gitkeep
+*.db
+*.sqlite
+*.xlsx
+
+# System & OS artifacts
+desktop.ini
+.DS_Store
+Thumbs.db
+.cache/
+coverage/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+strategy_audit_logs.json
+
+# AI Studio
+.aistudio/

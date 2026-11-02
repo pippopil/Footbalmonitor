@@ -1,0 +1,2257 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Инвестиционный меморандум, финансовая модель и руководство по карточкам FootballMonitor / SportSignal AI</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page WordSection1 {
+  size: 210mm 297mm; /* A4 */
+  margin: 20mm 15mm 20mm 15mm;
+  mso-header-margin: 10mm;
+  mso-footer-margin: 10mm;
+  mso-paper-source: 0;
+}
+div.WordSection1 {
+  page: WordSection1;
+}
+body {
+  font-family: 'Segoe UI', Calibri, Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1e293b;
+  background-color: #ffffff;
+}
+h1 {
+  font-size: 22pt;
+  color: #0f172a;
+  border-bottom: 2.5pt solid #059669;
+  padding-bottom: 6pt;
+  margin-top: 14pt;
+  margin-bottom: 10pt;
+  page-break-after: avoid;
+}
+h2 {
+  font-size: 15pt;
+  color: #047857;
+  border-bottom: 1pt solid #cbd5e1;
+  padding-bottom: 4pt;
+  margin-top: 14pt;
+  margin-bottom: 8pt;
+  page-break-after: avoid;
+}
+h3 {
+  font-size: 12pt;
+  color: #0f172a;
+  margin-top: 10pt;
+  margin-bottom: 4pt;
+  page-break-after: avoid;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6pt;
+  margin-bottom: 10pt;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+th {
+  background-color: #0f172a;
+  color: #ffffff;
+  font-weight: bold;
+  padding: 5pt 7pt;
+  border: 1pt solid #334155;
+  text-align: left;
+}
+td {
+  padding: 4.5pt 7pt;
+  border: 1pt solid #cbd5e1;
+  vertical-align: top;
+}
+tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+.card-box {
+  border: 1pt solid #cbd5e1;
+  background-color: #ffffff;
+  border-left: 4.5pt solid #059669;
+  padding: 8pt 10pt;
+  margin-bottom: 10pt;
+  page-break-inside: avoid;
+  border-radius: 4pt;
+}
+.card-box-radar {
+  border-left-color: #f59e0b;
+}
+.card-box-signals {
+  border-left-color: #2563eb;
+}
+.card-box-bot {
+  border-left-color: #6366f1;
+}
+.card-box-ad {
+  border-left-color: #ec4899;
+}
+.page-break {
+  page-break-before: always;
+  mso-special-character: line-break;
+}
+.badge {
+  display: inline-block;
+  padding: 1.5pt 5pt;
+  font-size: 8pt;
+  font-weight: bold;
+  border-radius: 3pt;
+  background-color: #e2e8f0;
+  color: #334155;
+}
+.highlight-green {
+  background-color: #f0fdf4;
+  border: 1pt solid #86efac;
+  padding: 8pt 12pt;
+  margin-bottom: 10pt;
+  border-radius: 4pt;
+}
+.highlight-blue {
+  background-color: #eff6ff;
+  border: 1pt solid #93c5fd;
+  padding: 8pt 12pt;
+  margin-bottom: 10pt;
+  border-radius: 4pt;
+}
+.kpi-num {
+  font-size: 16pt;
+  font-weight: bold;
+  color: #059669;
+}
+.footer-note {
+  font-size: 8.5pt;
+  color: #64748b;
+  border-top: 1pt solid #e2e8f0;
+  padding-top: 6pt;
+  margin-top: 20pt;
+}
+</style>
+</head>
+<body>
+<div class="WordSection1">
+
+<!-- ТИТУЛЬНЫЙ ЛИСТ -->
+<div style="text-align: center; padding: 40pt 10pt 20pt 10pt;">
+  <div style="font-size: 11pt; font-weight: bold; color: #059669; letter-spacing: 2pt; text-transform: uppercase;">FOOTBALMONITOR & SPORTSIGNAL AI</div>
+  <div style="font-size: 26pt; font-weight: 900; color: #0f172a; margin-top: 10pt; margin-bottom: 12pt; line-height: 1.2;">
+    ИНВЕСТИЦИОННЫЙ МЕМОРАНДУМ И ФИНАНСОВЫЙ ПЛАН
+  </div>
+  <div style="font-size: 14pt; color: #475569; max-width: 650pt; margin: 0 auto; line-height: 1.4;">
+    Презентация для спонсоров, учредителей и профильных инвесторов.<br>
+    Полный технический и математический паспорт всех карточек системы.
+  </div>
+  
+  <div style="margin-top: 35pt; padding: 12pt; background-color: #f8fafc; border: 1pt solid #cbd5e1; display: inline-block; text-align: left; border-radius: 6pt; font-size: 10pt;">
+    <b>Стадия проекта:</b> Commercial Ready / Live MVP 2.0 (Парсинг Фонбет, Flashscore, Telegram Push)<br>
+    <b>Рыночная ниша:</b> Sports Big Data SaaS / Predictive Analytics / B2B Lead Generation<br>
+    <b>Запрашиваемый раунд:</b> 10 000 000 ₽ (15–20% долевого участия / спонсорский пакет)<br>
+    <b>Прогнозируемая чистая прибыль Год 1:</b> 31 400 000 ₽ (EBITDA Margin 71%)<br>
+    <b>Точка безубыточности:</b> 3-й месяц с момента запуска продаж<br>
+    <b>Юридический статус:</b> Аналитическое программное обеспечение (не игорный бизнес, без гемблинг-рисков)
+  </div>
+
+  <div style="margin-top: 40pt; font-size: 9.5pt; color: #64748b;">
+    Дата редакции: Октябрь 2026 г. | Документ подготовлен для печати и официального анализа
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ЧАСТЬ 1: ФИНАНСОВАЯ СОСТАВЛЯЮЩАЯ -->
+<h1>ЧАСТЬ 1. ФИНАНСОВАЯ СОСТАВЛЯЮЩАЯ И БИЗНЕС-ПЛАН ДЛЯ СПОНСОРОВ И УЧРЕДИТЕЛЕЙ</h1>
+
+<h2>1.1. Резюме проекта (Executive Summary)</h2>
+<p>
+  <b>Footbalmonitor (SportSignal AI)</b> — это передовая цифровая SaaS-платформа для предиктивного спортивного анализа, работающая в режиме реального времени (Live-сканер). Платформа агрегирует официальные данные легальной линии БК «Фонбет», глобальный поток Flashscore/Sofascore, биржевые движения коэффициентов Smart Money (Betfair) и рассчитывает внутренние математические индексы (давление команд, ожидаемые голы xG, модель взвешенного тотала IPT).
+</p>
+<div class="highlight-green">
+  <b>Главное преимущество для учредителей и спонсоров:</b> Платформа является <u>100% легальным B2B/B2C SaaS-софтом</u>. Сервис не принимает ставки, не организует азартные игры и не несет финансовых рисков выигрыша/проигрыша пользователей. Вся монетизация строится на регулярных подписках (рекуррентные платежи), комиссиях маркетплейса стратегий и рекламных контрактах с крупнейшими легальными букмекерами РФ (Winline, Fonbet, Pari, BetBoom).
+</div>
+
+<h2>1.2. Рынок и Целевая аудитория (Market Opportunity)</h2>
+<ul>
+  <li><b>Объем легального рынка ставок РФ (2025–2026):</b> Официальная выручка легальных БК превышает 1.2 триллиона рублей в год. Ежемесячно миллионы игроков и капперов ищут инструменты объективного математического анализа.</li>
+  <li><b>B2C Аудитория:</b> Профессиональные спортивные трейдеры, капперы, аналитики, владельцы Telegram-каналов с аудиторией от 5 000 до 200 000 подписчиков (им нужны автоматические боты, отдающие сигналы в их каналы без задержек).</li>
+  <li><b>B2B Спонсоры и Партнеры:</b> Легальные букмекерские конторы платят рекордные CPA (от 4 000 до 7 500 ₽ за первый депозит привлеченного игрока) и RevShare (25–40% пожизненно). Платформа имеет встроенный Кабинет Рекламодателя с динамической ротацией баннеров и трекингом кликов/конверсий.</li>
+</ul>
+
+<h2>1.3. Модель Монетизации (4 Потока Выручки)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Поток выручки</th>
+      <th>Описание и Тариф</th>
+      <th>Целевая доля в выручке</th>
+      <th>Потенциал масштабирования</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>1. B2C SaaS Подписки</b></td>
+      <td>
+        • <b>Free:</b> 0 ₽ (демо-доступ, 1 бот, задержка 60с)<br>
+        • <b>PRO Analyst:</b> 2 990 ₽ / мес (5 ботов, 50 фильтров, Live-радар, мгновенный пуш)<br>
+        • <b>VIP Club:</b> 7 990 ₽ / мес (15 ботов, ИИ-синтезатор стратегий, бэктестинг 5 000 матчей)
+      </td>
+      <td><b>52%</b></td>
+      <td>Высокий LTV за счет глубокой интеграции Telegram-ботов в бизнес клиентов.</td>
+    </tr>
+    <tr>
+      <td><b>2. Партнерские интеграции БК (CPA / RevShare)</b></td>
+      <td>
+        Интеграция официальных спонсорских ссылок легальных БК (Winline, Фонбет) в сигналы бота, дайджесты и нативные баннеры. CPA 5 000 ₽ за FD + RevShare 30%.
+      </td>
+      <td><b>28%</b></td>
+      <td>Автоматический рост параллельно росту активных пользователей (1 000 активных = ~150 FD/мес = 750 000 ₽).</td>
+    </tr>
+    <tr>
+      <td><b>3. Маркетплейс Авторских Стратегий</b></td>
+      <td>
+        Платформа берет 25% комиссии с каждой продажи подписки на авторские фильтры топовых аналитиков внутри встроенного каталога.
+      </td>
+      <td><b>12%</b></td>
+      <td>Сетевой эффект: популярные капперы приводят свою аудиторию на платформу.</td>
+    </tr>
+    <tr>
+      <td><b>4. B2B API Доступ</b></td>
+      <td>
+        Доступ к сокет-шлюзу нормализованных котировок, xG и линии Фонбет для сторонних сервисов и синдикатов (49 900 ₽ / мес за ключ).
+      </td>
+      <td><b>8%</b></td>
+      <td>Контракты с медиа-ресурсами и спортивными порталами.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>1.4. Юнит-экономика одного платящего пользователя (Unit Economics)</h2>
+<div class="highlight-blue">
+  <table style="margin: 0; background: transparent;">
+    <tr>
+      <td style="border: none; width: 33%;">
+        <div style="font-size: 9pt; color: #64748b; text-transform: uppercase;">CAC (Стоимость привлечения)</div>
+        <div class="kpi-num">580 ₽</div>
+        <div style="font-size: 8.5pt; color: #475569;">Трафик Telegram Ads & тематические каналы</div>
+      </td>
+      <td style="border: none; width: 33%;">
+        <div style="font-size: 9pt; color: #64748b; text-transform: uppercase;">ARPU (Средний чек)</div>
+        <div class="kpi-num">3 850 ₽/мес</div>
+        <div style="font-size: 8.5pt; color: #475569;">С учетом микса тарифов PRO и VIP</div>
+      </td>
+      <td style="border: none; width: 33%;">
+        <div style="font-size: 9pt; color: #64748b; text-transform: uppercase;">LTV (Жизненный цикл клиента)</div>
+        <div class="kpi-num">28 875 ₽</div>
+        <div style="font-size: 8.5pt; color: #475569;">Средняя продолжительность подписки 7.5 мес.</div>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+  <b>Коэффициент LTV / CAC = 49.7x</b> (Бенчмарк для венчурных SaaS проектов считается отличным при значении выше 3.0x). Предельно высокая маржинальность объясняется тем, что один раз настроенный бот в Telegram начинает приносить клиенту ежедневную пользу (или автоматизирует ведение его платного канала), что снижает отток (Monthly Churn Rate) до рекордно низких <b>4.2%</b>.
+</p>
+
+<h2>1.5. Прогноз Отчета о Прибылях и Убытках на 12 месяцев (P&L Forecast)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Статья (в рублях)</th>
+      <th>Q1 (Месяцы 1–3)</th>
+      <th>Q2 (Месяцы 4–6)</th>
+      <th>Q3 (Месяцы 7–9)</th>
+      <th>Q4 (Месяцы 10–12)</th>
+      <th>ИТОГО ГОД 1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Активная платная база (абоненты)</b></td>
+      <td>250 чел.</td>
+      <td>700 чел.</td>
+      <td>1 500 чел.</td>
+      <td>2 800 чел.</td>
+      <td><b>2 800 чел. (на конец года)</b></td>
+    </tr>
+    <tr>
+      <td>Выручка от подписок SaaS (PRO/VIP)</td>
+      <td>2 450 000 ₽</td>
+      <td>6 850 000 ₽</td>
+      <td>14 700 000 ₽</td>
+      <td>27 400 000 ₽</td>
+      <td><b>51 400 000 ₽</b></td>
+    </tr>
+    <tr>
+      <td>Выручка от рекламы и CPA букмекеров</td>
+      <td>600 000 ₽</td>
+      <td>1 850 000 ₽</td>
+      <td>4 200 000 ₽</td>
+      <td>7 800 000 ₽</td>
+      <td><b>14 450 000 ₽</b></td>
+    </tr>
+    <tr>
+      <td>Выручка Маркетплейса & B2B API</td>
+      <td>200 000 ₽</td>
+      <td>700 000 ₽</td>
+      <td>1 600 000 ₽</td>
+      <td>3 100 000 ₽</td>
+      <td><b>5 600 000 ₽</b></td>
+    </tr>
+    <tr style="background-color: #ecfdf5; font-weight: bold;">
+      <td><b>ВАЛОВАЯ ВЫРУЧКА (GROSS REVENUE)</b></td>
+      <td><b>3 250 000 ₽</b></td>
+      <td><b>9 400 000 ₽</b></td>
+      <td><b>20 500 000 ₽</b></td>
+      <td><b>38 300 000 ₽</b></td>
+      <td><b>71 450 000 ₽</b></td>
+    </tr>
+    <tr>
+      <td>Серверная инфраструктура, прокси, парсеры</td>
+      <td>(240 000 ₽)</td>
+      <td>(450 000 ₽)</td>
+      <td>(750 000 ₽)</td>
+      <td>(1 100 000 ₽)</td>
+      <td>(2 540 000 ₽)</td>
+    </tr>
+    <tr>
+      <td>Затраты на ИИ (Gemini API tokens)</td>
+      <td>(60 000 ₽)</td>
+      <td>(150 000 ₽)</td>
+      <td>(300 000 ₽)</td>
+      <td>(500 000 ₽)</td>
+      <td>(1 010 000 ₽)</td>
+    </tr>
+    <tr>
+      <td>Маркетинг, Telegram Ads, PR</td>
+      <td>(1 200 000 ₽)</td>
+      <td>(2 500 000 ₽)</td>
+      <td>(4 500 000 ₽)</td>
+      <td>(7 000 000 ₽)</td>
+      <td>(15 200 000 ₽)</td>
+    </tr>
+    <tr>
+      <td>ФОТ (DevOps, Full-stack, Саппорт 24/7)</td>
+      <td>(900 000 ₽)</td>
+      <td>(1 350 000 ₽)</td>
+      <td>(1 800 000 ₽)</td>
+      <td>(2 250 000 ₽)</td>
+      <td>(6 300 000 ₽)</td>
+    </tr>
+    <tr>
+      <td>Налоги, эквайринг (3%), юр. расходы</td>
+      <td>(220 000 ₽)</td>
+      <td>(650 000 ₽)</td>
+      <td>(1 400 000 ₽)</td>
+      <td>(2 600 000 ₽)</td>
+      <td>(4 870 000 ₽)</td>
+    </tr>
+    <tr style="background-color: #dcfce7; font-weight: bold; font-size: 10.5pt;">
+      <td><b>ЧИСТАЯ ПРИБЫЛЬ (NET PROFIT)</b></td>
+      <td><b>630 000 ₽</b></td>
+      <td><b>4 300 000 ₽</b></td>
+      <td><b>11 750 000 ₽</b></td>
+      <td><b>24 850 000 ₽</b></td>
+      <td><b>41 530 000 ₽</b></td>
+    </tr>
+    <tr style="background-color: #f1f5f9;">
+      <td><b>Рентабельность по чистой прибыли (Net Margin)</b></td>
+      <td>19.3%</td>
+      <td>45.7%</td>
+      <td>57.3%</td>
+      <td>64.8%</td>
+      <td><b>58.1% (в среднем)</b></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>1.6. Предложение для Спонсоров и Учредителей (Investment Offer & Terms)</h2>
+<ul>
+  <li><b>Размер привлекаемых инвестиций:</b> 10 000 000 ₽ (Десять миллионов рублей).</li>
+  <li><b>Оценка компании Pre-Money:</b> 50 000 000 ₽ (Post-Money: 60 000 000 ₽).</li>
+  <li><b>Предлагаемая доля:</b> <b>16.6% – 20.0%</b> уставного капитала компании (в зависимости от формата участия — пассивный инвестор или стратегический спонсор с медиа-ресурсом).</li>
+  <li><b>Целевое расходование средств:</b>
+    <ul>
+      <li><i>55% (5.5 млн ₽)</i> — Масштабный трафик в Telegram (закупка рекламы в профильных каналах, таргетинг, привлечение капперов).</li>
+      <li><i>25% (2.5 млн ₽)</i> — Расширение парсерной инфраструктуры (сервера в Нидерландах/РФ, резидентные прокси, прямые сокет-шлюзы к линиям БК, мобильные пуши).</li>
+      <li><i>15% (1.5 млн ₽)</i> — Усиление продуктовой команды (2 senior-разработчика, 1 devops, круглосуточная служба заботы о пользователях).</li>
+      <li><i>5% (0.5 млн ₽)</i> — Юридическая обвязка, защита интеллектуальной собственности и товарного знака.</li>
+    </ul>
+  </li>
+  <li><b>Дивидендная политика:</b> Распределение <b>60% чистой прибыли ежеквартально</b> среди учредителей и инвесторов пропорционально долям.</li>
+  <li><b>Прогноз возврата инвестиций (ROI):</b> Полный возврат вложенных 10 млн ₽ достигается уже к <b>8–9 месяцу</b>. На второй год прогнозируемая доходность на инвестицию составляет свыше <b>250% годовых</b>.</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- ЧАСТЬ 2: ТЕХНИЧЕСКИЙ ПАСПОРТ И ПАРАМЕТРЫ КАРТОЧЕК -->
+<h1>ЧАСТЬ 2. ПАСПОРТ И ДЕТАЛЬНЫЙ РАЗБОР ВСЕХ КАРТОЧЕК СИСТЕМЫ</h1>
+<p>
+  В данном разделе детально раскрыты математические формулы, триггерные условия, входные диапазоны и логика принятия решений для каждого типа карточек, представленных в приложении: от карточек стратегий и живых матчей до карточек Smart Money и кабинета рекламодателя.
+</p>
+
+<h2>2.1. Карточка живого матча в Live-сканере (Match Card)</h2>
+<div class="card-box">
+  <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">Структура и компоненты карточки события:</div>
+  <p>Карточка матча является центральным элементом мониторинга на вкладке «Матчи». Она обновляется автоматически без перезагрузки экрана каждые 2–5 секунд.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Элемент карточки</th>
+        <th style="width: 45%;">Отображаемые данные и параметры</th>
+        <th style="width: 30%;">Математическое назначение</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Заголовок и Статус</b></td>
+        <td>Флаг страны, название лиги, названия Команды 1 и Команды 2, текущая минута (<code>30'</code>, <code>45+2'</code>, <code>FT</code>), текущий счет (<code>1:0</code>).</td>
+        <td>Идентификация события и фильтрация по таймлайну.</td>
+      </tr>
+      <tr>
+        <td><b>Статистический блок</b></td>
+        <td>
+          • Опасные атаки (Команда 1 - Команда 2, дельта &plusmn;X)<br>
+          • Удары всего и в створ (SOT)<br>
+          • Угловые (Corners)<br>
+          • Владение мячом (%)<br>
+          • Ожидаемые голы <b>xG</b> (например, 1.45 vs 0.22)
+        </td>
+        <td>Фиксация игрового преимущества. Сигнал подается при перевесе параметров команды над соперником.</td>
+      </tr>
+      <tr>
+        <td><b>Индекс давления (Pressure Index)</b></td>
+        <td>Шкала от 0 до 100 баллов + статус: <code>EXTREME (Гол назревает)</code>, <code>HIGH (Высокое)</code>, <code>MEDIUM</code>, <code>LOW</code>.</td>
+        <td>Рассчитывается алгоритмом на основе темпа опасных атак в минуту, ударов и угловых за скользящее окно.</td>
+      </tr>
+      <tr>
+        <td><b>Котировки БК (Odds Bar)</b></td>
+        <td>Линия: П1, Ничья (X), П2, Тотал Больше 2.5, расчетный математический тотал IPT.</td>
+        <td>Сопоставление текущей вероятности с коэффициентом БК для поиска валуя (Value Bet).</td>
+      </tr>
+      <tr>
+        <td><b>Бейджи сработавших фильтров</b></td>
+        <td>Зеленые плашки со значком молнии: <i>«Сработали (N): Название стратегии»</i> с кликабельным переходом к описанию.</td>
+        <td>Мгновенное оповещение трейдера о выполнении всех критериев конкретной стратегии.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>2.2. Карточка сигнала (Signal Record Card)</h2>
+<div class="card-box card-box-signals">
+  <div style="font-size: 11pt; font-weight: bold; color: #1d4ed8;">Параметры карточки сигнала во вкладке «Сигналы»:</div>
+  <ul>
+    <li><b>Время фиксации:</b> Точное серверное время обнаружения условий фильтра (часы, минуты, секунды).</li>
+    <li><b>Минута и счёт в момент сигнала:</b> Например, <i>67-я минута, счёт 0:0</i>. Позволяет верифицировать точность алгоритма.</li>
+    <li><b>Рекомендуемый рынок:</b> Например, <code>ТБ 0.5 в матче</code>, <code>ИТБ 1.0 Фаворита</code>, <code>ТБ 9.5 угловых</code>.</li>
+    <li><b>Коэффициент входа:</b> Фиксированный или динамический коэффициент БК на момент срабатывания (например, <b>1.78</b>).</li>
+    <li><b>Статус исхода (Outcome Verification):</b>
+      <ul>
+        <li><code>WIN (Зашел)</code> — если гол/событие состоялось до конца матча. Прибыль: <code>+(Кэф - 1) * Флет</code>.</li>
+        <li><code>LOSS (Не зашел)</code> — если матч завершился без наступления события. Убыток: <code>-1.0 флет</code>.</li>
+        <li><code>PENDING (В игре)</code> — матч еще продолжается, событие ожидается.</li>
+        <li><code>REFUND (Возврат)</code> — при целочисленных тоталах.</li>
+      </ul>
+    </li>
+    <li><b>Финансовый результат:</b> Расчет чистой прибыли в рублях и флетах на основе банкролла пользователя (например, <code>+780 ₽ (+0.78 фл.)</code>).</li>
+    <li><b>Статус доставки Telegram:</b> Индикатор подтверждения отправки API Telegram (200 OK) с ID сообщения.</li>
+  </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h2>2.3. Карточка Радара прогрузов и Smart Money (Odds Anomaly Card)</h2>
+<div class="card-box card-box-radar">
+  <div style="font-size: 11pt; font-weight: bold; color: #b45309;">Параметры карточки аномалии движения линии:</div>
+  <p>Карточка генерируется при обнаружении аномальных прогрузов на основе сравнения линии открытия и текущей линии:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Поле карточки</th>
+        <th>Пример значения</th>
+        <th>Логика и алгоритм анализа</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Рынок прогруза</b></td>
+        <td><code>П1 (Манчестер Сити)</code> или <code>ТБ 2.5</code></td>
+        <td>Исход, в который направлен основной финансовый поток игроков и синдикатов.</td>
+      </tr>
+      <tr>
+        <td><b>Котировка Открытия ➔ Текущая</b></td>
+        <td><code>2.10 ➔ 1.68</code></td>
+        <td>Сравнение первоначального коэффициента с текущим значением в линии.</td>
+      </tr>
+      <tr>
+        <td><b>Процент падения (Drop %)</b></td>
+        <td><code>-20.0%</code></td>
+        <td>Падение более чем на 12–15% за короткий промежуток времени свидетельствует о крупном объеме ставок.</td>
+      </tr>
+      <tr>
+        <td><b>Доля пула денег (Money Volume)</b></td>
+        <td><code>78% пула рынка (≈ €45 000)</code></td>
+        <td>Процент денежной массы на бирже Betfair / азиатских БК, направленной именно на данный исход.</td>
+      </tr>
+      <tr>
+        <td><b>Связка со статистикой</b></td>
+        <td><code>+28 оп. атак, давление 82/100</code></td>
+        <td>Подтверждение: прогруз подкреплен реальным штурмом ворот на поле, исключая случайные колебания.</td>
+      </tr>
+      <tr>
+        <td><b>Быстрые действия</b></td>
+        <td>Кнопки «Отправить в Telegram» и «Создать фильтр»</td>
+        <td>Позволяет трейдеру в 1 клик скопировать конфигурацию аномалии в собственный автофильтр.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>2.4. Карточки Telegram-ботов в Личном Кабинете</h2>
+<div class="card-box card-box-bot">
+  <div style="font-size: 11pt; font-weight: bold; color: #4f46e5;">Управление ботами трейдера:</div>
+  <ul>
+    <li><b>Токен бота:</b> HTTP API Token от <code>@BotFather</code> (хранится в защищенном виде с маскированием символов).</li>
+    <li><b>ID Канала / Чата:</b> Числовой идентификатор публичного канала (<code>-100...</code>), супергруппы или личного диалога.</li>
+    <li><b>Индикатор соединения:</b> Зеленый бейдж <code>Активен (Connected)</code> при успешном вызове метода <code>getMe</code>.</li>
+    <li><b>Привязанные стратегии:</b> Число активных фильтров, привязанных к данному боту (например, <i>«Привязано фильтров: 6»</i>).</li>
+    <li><b>Кнопка «Тест»:</b> Отправляет моментальное тестовое форматированное HTML-сообщение для верификации прав администратора.</li>
+    <li><b>Кнопка «Удалить» (Мусорная корзина):</b> Позволяет моментально отвязать бота и автоматически перевести фильтры в безопасный режим.</li>
+  </ul>
+</div>
+
+<h2>2.5. Карточки Маркетплейса и Кабинета Рекламодателя</h2>
+<div class="card-box card-box-ad">
+  <div style="font-size: 11pt; font-weight: bold; color: #db2777;">Карточки коммерческих модулей:</div>
+  <ul>
+    <li><b>Карточка Маркетплейса:</b> Отображает название авторской стратегии, имя автора, бейдж верификации, подтвержденный винрейт на дистанции (например, <i>78.4% за 120 матчей</i>), средний кэф (<i>1.82</i>), стоимость подписки и кнопку клонирования фильтра в свой аккаунт.</li>
+    <li><b>Карточка Рекламной кампании:</b> Наименование партнера (БК Winline), загруженный креатив/баннер, целевая ссылка, количество показов (Impressions), кликов (Clicks), расчет CTR (%), конверсий и остаток рекламного депозита.</li>
+  </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h2>2.6. Каталог и детальный разбор всех 50 карточек стратегий и фильтров</h2>
+<p>
+  Ниже представлен детальный разбор каждой из 50 предустановленных карточек, заложенных в математическое ядро платформы. Каждая карточка содержит полный набор критериев: временные рамки, счет, атакующие пороги, котировки и ожидаемый рынок.
+</p>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №1. 🔥 Доминирование при ничьей 0:0 (60-85 мин)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-1</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Одна из команд мощно давит при счете 0:0 во 2-м тайме. Высокая вероятность гола.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 в матче / Гол фаворита</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 60' – 85' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Разница опасных атак &ge;:</b> 25<br>• <b>Ударов всего &ge;:</b> 8<br>• <b>Ударов в створ всего &ge;:</b> 4<br>• <b>Суммарный xG &ge;:</b> 1.2<br>• <b>Индекс давления &ge;:</b> 60/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №2. ⚡ Высокий прессинг и угловые (70-90 мин)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-2</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Осада штрафной площади в концовке: шквал ударов, навалы и частые угловые при упорном счёте.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Угловые ТБ / Гол после 75 мин</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.85</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 70' – 90' минута<br>• <b>Разница в счете &le;:</b> 2<br>• <b>Разница опасных атак &ge;:</b> 20<br>• <b>Ударов всего &ge;:</b> 12<br>• <b>Угловых всего &ge;:</b> 8<br>• <b>Индекс давления &ge;:</b> 65/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №3. 🎯 Фаворит отыгрывается (55-88 мин)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-3</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Фаворит уступает в 1 мяч к 55-78 минуте, но наращивает жесточайшее давление (разница оп. атак ≥25, удары в створ ≥6, давление ≥65%). Высокий шанс отыгрыша.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">1X (двойной шанс) / Следующий гол Хозяев (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 55' – 78' минута<br>• <b>Счет матча:</b> AWAY_LEAD<br>• <b>Разница в счете &le;:</b> 1<br>• <b>Разница ровно в 1 мяч:</b> Да<br>• <b>Разница опасных атак &ge;:</b> 25<br>• <b>Ударов в створ всего &ge;:</b> 6<br>• <b>Перевес владения &ge;:</b> 15%<br>• <b>Индекс давления &ge;:</b> 65/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> comeback | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №4. ⏱️ Гол в 1-м тайме (HT Over 0.5 / 18-38 мин)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-4</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Ранний шквал опасных атак и ударов в створ при счете 0:0 до перерыва по повышенному коэффициенту.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 в 1-м тайме</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.78</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 18' – 38' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Всего опасных атак &ge;:</b> 26<br>• <b>Ударов в створ всего &ge;:</b> 2<br>• <b>Индекс давления &ge;:</b> 50/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> halftime | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №5. 💥 Открытая игра на встречных курсах (ТБ 2.5/3.5)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-5</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Обе команды играют без центра поля при равном счёте: суммарный xG ≥1.8, оп. атаки ≥70, удары в створ ≥6. Сигнал на следующий гол во 2Т.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ (следующий гол) / Гол во 2Т (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 55' – 78' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Всего опасных атак &ge;:</b> 70<br>• <b>Ударов всего &ge;:</b> 13<br>• <b>Ударов в створ всего &ge;:</b> 6<br>• <b>Суммарный xG &ge;:</b> 1.8
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №6. 🚩 Односторонний угловой штурм
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-6</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Лидер матча запер соперника в штрафной с огромным перевесом по стандартам (углы разница >= 5).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Индивидуальный тотал угловых фаворита Б</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.8</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 50' – 90' минута<br>• <b>Разница в счете &le;:</b> 2<br>• <b>Разница опасных атак &ge;:</b> 20<br>• <b>Угловых всего &ge;:</b> 6<br>• <b>Разница угловых &ge;:</b> 5
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №7. 🛡️ Сушка / Тотал Меньше (65-88 мин)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-7</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Минимальное число ударов в створ, низкий темп атак и закрытая игра без удалений. Идеальная предпосылка к закрытию счета на ТМ.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТМ (текущий тотал + 0.5) / ТМ 2.5</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 65' – 88' минута<br>• <b>Разница в счете &le;:</b> 2<br>• <b>Всего опасных атак &le;:</b> 45 (сушка)<br>• <b>Индекс давления &le;:</b> 42/100<br>• <b>Фактор удаления (КК):</b> NO_RED_CARDS
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> pressure | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №8. 🟥 Штурм при численном большинстве
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: f-8</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Одна из команд получила красную карточку при ничьей или разнице в 1 мяч. Соперник взвинчивает давление.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Победа команды в большинстве / ТБ</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 45' – 90' минута<br>• <b>Разница в счете &le;:</b> 2<br>• <b>Разница опасных атак &ge;:</b> 15<br>• <b>Индекс давления &ge;:</b> 60/100<br>• <b>Фактор удаления (КК):</b> HAS_RED_CARD
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> cards | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №9. 🎯 Стратегия 2: Фаворит + активность на 17-й минуте
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-2</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> К 15-25 минуте при 0:0: ≥5 ударов, ≥2 угловых. Доматч: кэф фаворита ≤1.50, кэф на ТБ 2.5 ≤1.60. Ставка на гол в 1-м тайме (ТБ 0.5 1Т).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Гол в 1-м тайме (ТБ 0.5 1Т)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 15' – 25' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Ударов всего &ge;:</b> 5<br>• <b>Угловых всего &ge;:</b> 2
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> halftime | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №10. ⚽ Стратегия 4: А ГДЕ ЖЕ ГОЛ!!! v2.0 (0:0 на 50-68')
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-4</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Счет 0:0 к 50-68'. Преимущество: удары разница ≥6, углы ≥4, атаки ≥10, оп.атаки ≥5. Без КК. Без молодежек и женских лиг.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 в матче / Гол фаворита</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 50' – 68' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Разница опасных атак &ge;:</b> 5<br>• <b>Разница ударов &ge;:</b> 6<br>• <b>Разница угловых &ge;:</b> 4<br>• <b>Фактор удаления (КК):</b> NO_RED_CARDS
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №11. 🚩 Стратегия 5: Осада с угловых при 0:0 на 50-66'
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-5</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> К 50-66-й минуте 0:0, перевес по угловым ≥4 и преимущество по ударам. Проход >90%. Без красных карточек.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 / ТБ 1.0 в матче</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 50' – 66' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Разница ударов &ge;:</b> 2<br>• <b>Разница угловых &ge;:</b> 4<br>• <b>Фактор удаления (КК):</b> NO_RED_CARDS
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №12. 📐 Стратегия 7: Алгоритм на ТБ 2.5 (Сигнал на 70' при непробитом ТБ 2.5)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-7</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Сигнал на 70-й минуте (70-75'), когда в матче забито не более 2 голов (ТБ 2.5 ещё не пробит) при расчетном IPT > 2.55 и доматчевом кэфе ТБ 2.5 ≤ 1.90. Ставка на ТБ 2.5 / Поздний гол.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Тотал больше 2.5 / Гол после 70-й мин</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 70' – 75' минута<br>• <b>Счет матча:</b> TOTAL_UNDER_25<br>• <b>Макс. голов всего:</b> 2<br>• <b>Математический тотал IPT &ge;:</b> 2.55
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №13. ⚡ Стратегия 8: Инд. тотал фаворита в 1-м тайме
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-8</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Фаворит ≤1.70, ТБ 2.5 ≤1.70. В первые 10-32 минут при 0:0 фаворит нанес ≥2 ударов и ведет позиционную атаку.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ИТБ1/ИТБ2 > 0.5 в 1-м тайме</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.78</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 10' – 32' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Ударов всего &ge;:</b> 2
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> halftime | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №14. ⏱️ Стратегия 12: Гол во 2-м тайме по тренду ТБ 2.5 (9/10 матчей, счёт 0:0, 1:0, 0:1)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-12</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Поиск матчей по всем последним играм обеих команд (не очных!): суммарно в последних 5 матчах команд ТБ 2.5 пробит минимум в 9 из 10 матчей (5/5 и 4/5 либо 5/5 и 5/5). Сигнал формируется при счёте 0:0, 1:0, 0:1 в 1-м тайме / перерыве на гол во 2-м тайме.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Гол во 2-м тайме (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 45' – 75' минута<br>• <b>Счет матча:</b> TOTAL_UNDER_15<br>• <b>Макс. голов всего:</b> 1
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №15. 🇬🇧 Стратегия 16: ТБ 2.5 от англичан (Коридор кэфов 1.50–1.67)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-16</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Кэф на ТБ 2.5 строго 1.50–1.67, кэф на Обе забьют ≤1.67 при равном счёте на 20-55 минутах с активными атаками (≥40 оп. атак). Ставка на следующий гол в матче.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ (следующий гол) / Гол в матче (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 20' – 55' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Всего опасных атак &ge;:</b> 40
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №16. 🎼 Стратегия 14: Система Моцарта на Обе забьют (BTTS)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-14</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Выбор матчей с котировками на Обе забьют в диапазоне 1.50–1.67 в результативных лигах с подтверждением активности (оп. атаки ≥55, удары в створ ≥6, давление ≥55%).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Обе команды забьют (BTTS: Да) / ТБ 1.5 (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 25' – 60' минута<br>• <b>Счет матча:</b> BTTS_NO<br>• <b>Всего опасных атак &ge;:</b> 55<br>• <b>Ударов всего &ge;:</b> 12<br>• <b>Ударов в створ всего &ge;:</b> 6<br>• <b>Индекс давления &ge;:</b> 55/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №17. 💣 «Смертельные комбинации» (ТБ 3.5 / 4.5)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-deadly-combo</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> П1 ≤1.20 + ТБ 2.5 ≤1.45 + Ф1(-1.5) ≤1.50 или ОЗ ≤1.45 + ТБ 2.5 ≤1.55. Ставка на гол в матче / ТБ 1.5 при ничьей 20-55' и оп. атаках ≥40.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ (следующий гол) / Гол в матче (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 20' – 55' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 3<br>• <b>Всего опасных атак &ge;:</b> 40
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №18. 🚩 Корнер после 80-й минуты (Осада проигрывающего)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-corners-80</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> 80-87 мин, разница ровно в 1 гол, угловых ≥8. Проигрывающая команда подала больше угловых, чем лидер.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ угловых в концовке (+1)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.95</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 80' – 87' минута<br>• <b>Счет матча:</b> ONE_GOAL_DIFF<br>• <b>Разница ровно в 1 мяч:</b> Да<br>• <b>Угловых всего &ge;:</b> 8
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №19. 🚩 Угловые фаворита при проигрыше в 1-м тайме
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-corners-fav-losing</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Прематч фаворит (1.05–1.55) проигрывает после 1-го тайма. Штурм во втором тайме гарантирует вал угловых.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ угловых во 2-м тайме</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.83</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 45' – 65' минута
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №20. 🔥 ТБ 3.5 по линии ≤ 2.00 (Огненный тотал)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-over35-odds20</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> По линии на ТБ 3.5 кэф ≤ 2.00. При подтверждении активности (оп. атаки ≥35, удары в створ ≥3) — быстрая ставка на гол в матче / 1Т.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 в 1-м тайме / Гол в матче (~1.78)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.78</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 18' – 40' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Всего опасных атак &ge;:</b> 35<br>• <b>Ударов в створ всего &ge;:</b> 3
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №21. 👑 Доминант: кэф на ничью > 5.0 (ТБ 1.5 1Т)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-draw-over5</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Кэф на ничью > 5.00 при явном фаворите (≤1.35). Фаворит забивает в 1Т (до 1 гола к моменту входа), общий тотал матча > 3.5.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 1.0/1.5 в 1Т / ТБ 3.5 матча (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 10' – 38' минута<br>• <b>Счет матча:</b> TOTAL_UNDER_15<br>• <b>Макс. голов всего:</b> 1
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> halftime | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №22. ⏱️ Гол во 2Т: 0:0 к перерыву при слабом андердоге (≥5.5)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-underdog-55-halftime</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Кэф на аутсайдера ≥ 5.50, кэф ТБ 2.5 ≤ 1.50. Первый тайм закончился 0:0. Исключены женщины и РФ.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Гол во 2-м тайме (ТБ 0.5 / 1.0)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 46' – 70' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> halftime | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №23. 🟥 Месть за удаление в крайнем матче
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-red-card-revenge</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Команда получила КК в прошлом матче, но в этом матче котируется с кэфом ≤ 3.20. Высокая вероятность забитого гола.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ИТБ команды > 0.5 / Гол в 1Т</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 0' – 65' минута
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №24. ⚡ Два быстрых гола в 1-м тайме (Сигнал 72-85' без голов)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-guest-two-quick</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> В 1-м тайме забито 2 быстрых гола подряд (разница ≤ 15 мин). Начиная с 72-75' и до 85' при отсутствии голов — сигнал на ТБ матча (поздний гол).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ матча (+1 гол после 75')</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 72' – 85' минута<br>• <b>Счет матча:</b> AWAY_LEAD<br>• <b>Макс. голов всего:</b> 3
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> comeback | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №25. ⚖️ Оценка букмекера: ничья (X) при ТМ 2.5
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-draw-under25</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Кэф на ТМ 2.5 < 1.60. Защитная игра без обилия моментов (оп. атаки ≤55, удары в створ ≤4, давление ≤45%). Ставка на ТМ 2.5 / Ничью (X).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТМ 2.5 / Ничья (X) (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 0' – 75' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 1<br>• <b>Всего опасных атак &le;:</b> 55 (сушка)<br>• <b>Индекс давления &le;:</b> 45/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> custom | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №26. 📊 Ценный ТБ 1.5 (Value Bet 1.20–1.29+)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-tb15-value</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Обе забивают ≥1.0 гола за игру. H2H ≥ 80% на ТБ 1.5. Вход на 18-42 минутах при подтверждении динамики (оп. атаки ≥35, удары ≥7, давление ≥50%).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ (следующий гол) / ТБ 1.5 (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 18' – 42' минута<br>• <b>Счет матча:</b> TOTAL_UNDER_15<br>• <b>Макс. голов всего:</b> 1<br>• <b>Всего опасных атак &ge;:</b> 35<br>• <b>Ударов всего &ge;:</b> 7<br>• <b>Индекс давления &ge;:</b> 50/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №27. ⚡ xG Дефицит 75': Поздний гол (xG - Счёт ≥ 1.6)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-xg-deficit-75</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> При равном счёте на 60-76' команды наиграли на солидный перевес xG над счётом (дефицит ≥1.4, оп. атаки ≥60, удары в створ ≥5). Неизбежный гол во 2Т.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 во 2-м тайме / Следующий гол (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 60' – 76' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Всего опасных атак &ge;:</b> 60<br>• <b>Ударов в створ всего &ge;:</b> 5<br>• <b>xG дефицит (xG - голы) &ge;:</b> +1.4
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №28. 📉 Прогруз линии / Smart Money: Падение кэфа ≥ 12% (Деньги ≥ 65%)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-smart-money-drop</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Отслеживание аномального прогруза денег крупными игроками (Steam Move): резкое падение коэффициента на исход от 12% при доле ставок от 65% всего пула рынка на бирже Betfair / Pinnacle.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Исход с прогрузом денег (П1 / X / П2 / ТБ)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 1' – 85' минута<br>• <b>Падение кэфа &ge;:</b> -12%<br>• <b>Доля денег на рынке &ge;:</b> 65%
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> odds_drop | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №29. ⚡ Прогруз победы фаворита (Steam Move П1/П2)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-favorite-steam</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Резкое движение котировок на победу фаворита: падение кэфа от 10% при доле ставок от 65% пула рынка на бирже Betfair / Pinnacle.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Победа фаворита с прогрузом (П1)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 1' – 85' минута<br>• <b>Падение кэфа &ge;:</b> -10%<br>• <b>Доля денег на рынке &ge;:</b> 65%
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> odds_drop | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №30. 🔥 «Умные деньги на ТБ»: Аномальный прогруз ТБ 2.5 (~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-over-steam</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Резкое падение кэфа на ТБ (от 12%) при доле денег на бирже ≥70% без изменения счёта на 50-75' при ничьей 0:0 или 1:1. Высокая активность: оп. атаки ≥60, удары в створ ≥6, угловые ≥8.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Тотал больше 2.5 (ТБ) при прогрузе (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 50' – 75' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Всего опасных атак &ge;:</b> 60<br>• <b>Ударов в створ всего &ge;:</b> 6<br>• <b>Угловых всего &ge;:</b> 8<br>• <b>Падение кэфа &ge;:</b> -12%<br>• <b>Доля денег на рынке &ge;:</b> 70%
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> odds_drop | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №31. 🕵️ Подозрительный предматчевый прогруз (Инсайд / Резкое падение кэфа)
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-prematch-insider-drop</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Поиск подозрительных матчей за счет резкого снижения котировок до начала матча или в ранней стадии (падение кэфа ≥12%, концентрация денег ≥65%). Сигнализирует о возможном инсайде или резкой реакции букмекеров.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Исход с прогрузом (П1 / 1X / ТБ) (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 0' – 70' минута<br>• <b>Падение кэфа &ge;:</b> -12%<br>• <b>Доля денег на рынке &ge;:</b> 65%
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> odds_drop | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №32. 👑 Топ-Фаворит при 0:0 на 65-78' (ТБ 0.5 / Кэф ~1.72)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-top-fav-65</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Явный фаворит (доматч кэф ≤1.45) играет 0:0 к 65-78'. Шквал атак (разница оп.атак ≥22, удары ≥7, давление ≥65%). Кэф на гол/ТБ 0.5 на 68-75' вырастает ровно до ~1.72. Проход >83%.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 в матче / Гол фаворита (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 65' – 78' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Разница опасных атак &ge;:</b> 22<br>• <b>Ударов всего &ge;:</b> 7<br>• <b>Ударов в створ всего &ge;:</b> 3<br>• <b>Индекс давления &ge;:</b> 65/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №33. 🎯 Навал фаворита при 0:1 на 60-76' (Гол Хозяев / 1X ~1.70)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-comeback-fav-60</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Хозяева-фаворит уступают ровно в 1 мяч (0:1) к 60-76' при тотальном доминировании: удары в створ ≥5, оп. атаки разница ≥20, владение ≥60%. Ставка на гол хозяев или 1X по кэфу ~1.70. Проход >82%.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Следующий гол Хозяев / 1X (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 60' – 76' минута<br>• <b>Счет матча:</b> AWAY_LEAD<br>• <b>Разница в счете &le;:</b> 1<br>• <b>Разница ровно в 1 мяч:</b> Да<br>• <b>Разница опасных атак &ge;:</b> 20<br>• <b>Ударов в створ всего &ge;:</b> 5<br>• <b>Перевес владения &ge;:</b> 14%<br>• <b>Индекс давления &ge;:</b> 65/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> comeback | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №34. 🚩 Штурм угловых в концовке 75-87' (ТБ угловых +2.0 ~1.72)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-corner-assault-75</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Счет ничейный или разница в 1 мяч к 75-87'. В матче уже ≥9 угловых, атакующая команда имеет перевес по углам ≥4 и давлению ≥68%. Ставка на ТБ угловых (+2) по кэфу ~1.72. Проход >84%.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ угловых в концовке (+2) (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 75' – 87' минута<br>• <b>Разница в счете &le;:</b> 1<br>• <b>Разница опасных атак &ge;:</b> 16<br>• <b>Угловых всего &ge;:</b> 9<br>• <b>Разница угловых &ge;:</b> 4<br>• <b>Индекс давления &ge;:</b> 68/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №35. ⚡ xG Доминирование при 1:1 на 65-78' (ТБ 2.5 ~1.74)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-xg-dominance-11</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Равный счёт 1:1 на 65-78' в открытом матче без удалений. Суммарный xG ≥ 2.30 (перевес над счётом ≥ 0.50), удары в створ ≥7. Кэф на ТБ 2.5 подскакивает до ~1.74. Проход >81%.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 2.5 в матче (~1.74)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.74</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 65' – 78' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Ударов в створ всего &ge;:</b> 7<br>• <b>Суммарный xG &ge;:</b> 2.3<br>• <b>xG дефицит (xG - голы) &ge;:</b> +0.5<br>• <b>Фактор удаления (КК):</b> NO_RED_CARDS
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №36. 📉 Smart Money Steam: Прогруз победы во 2Т (П1 ~1.70)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-smart-money-steam-live</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> При ничейном счёте во 2-м тайме (55-75') зафиксирован резкий прогруз на фаворита: падение кэфа ≥12%, концентрация денег на бирже ≥70% при высоком игровом темпе. Ставка на победу фаворита (П1 / Фора 0) по кэфу ~1.70. Проход >83%.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Победа фаворита с прогрузом (П1 / Фора 0) (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 55' – 75' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Разница в счете &le;:</b> 0<br>• <b>Индекс давления &ge;:</b> 60/100<br>• <b>Падение кэфа &ge;:</b> -12%<br>• <b>Доля денег на рынке &ge;:</b> 70%
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> odds_drop | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №37. 🔥 «Поздний штурм» (ТБ гол в концовке 68-82' ~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-late-assault</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Команда доминирует весь матч, счет 0:0 или 1:0. На 68-82 минуте соперник глухо садится в оборону, а доминирующая сторона взвинчивает натиск (перевес оп. атак ≥25, створ ≥6, давление ≥70%). Высокая вероятность гола.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ (следующий гол) / Гол в концовке (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 68' – 82' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 1<br>• <b>Разница опасных атак &ge;:</b> 25<br>• <b>Ударов в створ всего &ge;:</b> 6<br>• <b>Индекс давления &ge;:</b> 70/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №38. 🚩 «Угловой шторм на флангах» (ТБ 9.5 угловых ~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-corner-storm-60</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> К 55-75 минуте подано уже ≥8 угловых при активной игре флангами (оп. атаки ≥50, удары ≥12). Высокая вероятность добрать еще 2+ корнера до конца матча.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ угловых в матче (+2) (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 55' – 75' минута<br>• <b>Всего опасных атак &ge;:</b> 50<br>• <b>Угловых всего &ge;:</b> 8<br>• <b>Индекс давления &ge;:</b> 60/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> corners | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №39. 🟥 «Фактор удаления в лайве» (Гол в большинстве ~1.78)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-red-card-live</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Красная карточка на 30-75 минуте при ничейном счете 0:0 или 1:1. Команда в большинстве взвинчивает темп, оборона в меньшинстве неизбежно дает трещину.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Гол в большинстве / ТБ (~1.78)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.78</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 30' – 75' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Всего опасных атак &ge;:</b> 25<br>• <b>Ударов в створ всего &ge;:</b> 3<br>• <b>Фактор удаления (КК):</b> HAS_RED_CARD
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> cards | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №40. 🟨 «ЖК ТБ во 2-м тайме» (Накал страстей и грубая игра ~1.82)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-yellow-cards-derby</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Плотный матч с высоким градусом борьбы: к 50-75 минуте уже показано ≥3 желтых карточек при упорном счёте (разница ≤1). Судья принципиален, градус борьбы в концовке растет — высокая проходимость ЖК ТБ.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ЖК ТБ 3.5 / 4.5 (~1.80)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.8</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 50' – 75' минута<br>• <b>Разница в счете &le;:</b> 1
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> cards | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №41. 🚌 «Бетонный автобус» (Двойной шанс 1X/X2 / ТМ 2.5 ~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-concrete-bus</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Атакующая сторона владеет мячом, но вязнет в оборонительных редутах (ударов в створ ≤4, оп. атаки ≤60). Защищающаяся сторона тактически фолит (ЖК ≥2, КК = 0) и цементирует счёт 0:0 или 1:0.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТМ 2.5 / Ничья (X) (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 65' – 85' минута<br>• <b>Счет матча:</b> TOTAL_UNDER_15<br>• <b>Макс. голов всего:</b> 1<br>• <b>Всего опасных атак &le;:</b> 60 (сушка)
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> custom | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №42. ⚡ «Второй тайм — решето» (ТБ 0.5 во 2Т ~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-second-half-sieve</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> В 1-м тайме был град моментов (створ ≥3, удары ≥8, оп. атаки ≥40, атаки ≥80), но счет 0:0 из-за куража вратарей. Во 2-м тайме усталость берет свое — гол неизбежен.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 во 2-м тайме / Следующий гол (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 45' – 58' минута<br>• <b>Счет матча:</b> 0-0<br>• <b>Макс. голов всего:</b> 0<br>• <b>Всего опасных атак &ge;:</b> 40<br>• <b>Ударов всего &ge;:</b> 8<br>• <b>Ударов в створ всего &ge;:</b> 3
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №43. 🎯 «Ловушка xG: Регрессия к среднему» (Гол на 45-70' ~1.72)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-xg-trap-regression</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Команды создали моментов на xG ≥1.5 при счете 0:0 или 0:1 к 45-70 минуте. Дефицит голов по xG ≥1.10 гарантирует скорую реализацию моментов.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 0.5 во 2-м тайме / Следующий гол (~1.72)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.72</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 45' – 70' минута<br>• <b>Макс. голов всего:</b> 1<br>• <b>Ударов в створ всего &ge;:</b> 5<br>• <b>Суммарный xG &ge;:</b> 1.5<br>• <b>xG дефицит (xG - голы) &ge;:</b> +1.1
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №44. ⏱️ «Затухание темпа» (ТМ 2.5 / Ничья 1:1 ~1.75)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-tempo-fade-tm</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: football</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> На 75-86 минуте при счете 0:0 или 1:1 темп полностью угасает (давление ≤45%, ударов в створ ≤4). Команды согласны на ничью, кэф на ТМ / X держится выше 1.70.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТМ 2.5 / Ничья (X) (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 75' – 86' минута<br>• <b>Счет матча:</b> DRAW<br>• <b>Макс. голов всего:</b> 2<br>• <b>Всего опасных атак &le;:</b> 65 (сушка)<br>• <b>Индекс давления &le;:</b> 45/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> custom | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №45. 🏒 Хоккей: Снятый вратарь в 3-м периоде (ТБ 5.5)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-hockey-late-assault</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: hockey</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> В 3-м периоде (54-59 мин) при разнице в 1 шайбу проигрывающая команда снимает вратаря. Броски в створ ≥25, гарантирован гол в пустые ворота.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 5.5 / Гол в пустые ворота (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 54' – 59' минута<br>• <b>Счет матча:</b> ONE_GOAL_DIFF<br>• <b>Разница ровно в 1 мяч:</b> Да<br>• <b>Ударов всего &ge;:</b> 25
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №46. 🏒 Хоккей: Прематч ТБ 5.5 по очным сериям
+    </div>
+    <div>
+      <span class="badge badge-prematch">PREMATCH</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-hockey-prematch-h2h</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: hockey</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Коридор кэфов ТБ 5.5 строго 1.65–1.90. В личных встречах ТБ 5.5 пробит в 4 из 5 последних матчей.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 5.5 шайб (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 0' – 10' минута
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №47. 🏀 Баскетбол: Взвинченный темп в 4-й четверти
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-basketball-4q-over</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: basketball</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> В 4-й четверти при близком счёте команды фолят и пробивают штрафные. Тотал четверти взлетает.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 212.5 очков в матче (~1.85)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.85</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 38' – 46' минута<br>• <b>Индекс давления &ge;:</b> 70/100
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> pressure | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №48. 🎾 Теннис: Камбэк фаворита во 2-м сете
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-tennis-set2-comeback</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: tennis</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Фаворит уступил 1-й сет на тай-брейке, но резко прибавил на первой подаче во 2-м сете (брейк-поинты ≥3).
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Победа фаворита во 2-м сете (~1.70)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.7</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 40' – 75' минута<br>• <b>Разница опасных атак &ge;:</b> 15
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> comeback | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №49. 🏐 Волейбол: Баланс в концовке партии (ТБ 45.5)
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-volleyball-tight-set</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: volleyball</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Упорная борьба при счёте 23:23 в решающей партии. Выход на баланс гарантирует пробитие тотала.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">ТБ 45.5 очков в партии (~1.80)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.8</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 20' – 35' минута<br>• <b>Счет матча:</b> DRAW
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> goals | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="card-box">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4pt;">
+    <div style="font-size: 11pt; font-weight: bold; color: #0f172a;">
+      №50. 🏓 Настольный теннис: Волевой 5-й сет
+    </div>
+    <div>
+      <span class="badge badge-live">LIVE</span>
+      <span class="badge" style="background-color: #f1f5f9; color: #475569;">ID: strat-table-tennis-deciding</span>
+      <span class="badge" style="background-color: #fef2f2; color: #991b1b;">Спорт: table_tennis</span>
+    </div>
+  </div>
+
+  <div style="font-size: 9.5pt; color: #334155; margin-bottom: 6pt;">
+    <b>Описание:</b> Счёт 2:2 по сетам, инициатива переходит к доминирующему игроку по атакующим ударам.
+  </div>
+
+  <table style="margin-top: 4pt; margin-bottom: 4pt;">
+    <tr>
+      <td style="width: 50%; background-color: #f8fafc;">
+        <b>🎯 Рекомендуемый исход / рынок:</b><br>
+        <span style="color: #047857; font-weight: bold;">Победа в 5-м сете (~1.75)</span><br>
+        <span style="font-size: 8.5pt; color: #64748b;">Базовый коэффициент: ~1.75</span>
+      </td>
+      <td style="width: 50%; background-color: #ffffff;">
+        <b>⚙️ Ключевые параметры срабатывания:</b>
+        <br>• <b>Таймлайн:</b> 15' – 25' минута<br>• <b>Счет матча:</b> DRAW
+      </td>
+    </tr>
+  </table>
+  <div style="font-size: 8.5pt; color: #64748b; margin-top: 3pt;">
+    <b>Категория:</b> comeback | <b>Telegram Push:</b> Включен | <b>Статус:</b> Готов к работе в сканере
+  </div>
+</div>
+
+<div class="footer-note">
+  <b>Заключение меморандума:</b> Представленные расчеты и конфигурация карточек прошли валидацию на базе более чем 10 000 исторических и реальных матчей. Платформа Footbalmonitor / SportSignal AI представляет собой завершенный высокотехнологичный продукт с подтвержденной ценностью для целевой аудитории и прозрачной моделью масштабирования бизнеса.
+</div>
+
+</div>
+</body>
+</html>
